@@ -96,84 +96,99 @@ Deno.serve(async (req) => {
     return errResponse("config", String(e), 500);
   }
 
-  // Stage: load file (prefer resume_files, fallback to resumes.file_path / source_text)
-  console.log("[parse-resume-to-doc] stage: load file");
   let sourceText: string | undefined;
-  let bytes: Uint8Array | null = null;
-  let storagePath = "";
-  let mimeType = "";
-  try {
-    const { data: resumeRow, error: resumeErr } = await supabase
+  const bodyText = (body?.text ?? body?.body?.text);
+  if (typeof bodyText === "string" && bodyText.trim().length > 0) {
+    // Client already has text (e.g. from react-pdftotext) — skip file load and extraction
+    const { data: row, error } = await supabase
       .from(RESUMES_TABLE)
-      .select("id, source_text, file_path")
+      .select("id")
       .eq("id", resumeId)
       .maybeSingle();
-    if (resumeErr || !resumeRow) {
-      return errResponse("load file", "Resume not found", 400);
+    if (error || !row) {
+      return errResponse("input", "Resume not found", 400);
     }
+    sourceText = bodyText.trim();
+    console.log("[parse-resume-to-doc] using client-provided text, length:", sourceText.length);
+  } else {
+    // Stage: load file (prefer resume_files, fallback to resumes.file_path / source_text)
+    console.log("[parse-resume-to-doc] stage: load file");
+    let bytes: Uint8Array | null = null;
+    let storagePath = "";
+    let mimeType = "";
+    try {
+      const { data: resumeRow, error: resumeErr } = await supabase
+        .from(RESUMES_TABLE)
+        .select("id, source_text, file_path")
+        .eq("id", resumeId)
+        .maybeSingle();
+      if (resumeErr || !resumeRow) {
+        return errResponse("load file", "Resume not found", 400);
+      }
 
-    const r = resumeRow as { source_text?: string | null; file_path?: string | null };
-    const { data: fileRows, error: fileErr } = await supabase
-      .from(RESUME_FILES_TABLE)
-      .select("storage_path, mime_type")
-      .eq("resume_id", resumeId)
-      .order("created_at", { ascending: false })
-      .limit(1);
+      const r = resumeRow as { source_text?: string | null; file_path?: string | null };
+      const { data: fileRows, error: fileErr } = await supabase
+        .from(RESUME_FILES_TABLE)
+        .select("storage_path, mime_type")
+        .eq("resume_id", resumeId)
+        .order("created_at", { ascending: false })
+        .limit(1);
 
-    if (!fileErr && Array.isArray(fileRows) && fileRows.length > 0) {
-      const row = fileRows[0] as { storage_path?: string; mime_type?: string };
-      storagePath = row?.storage_path ?? "";
-      mimeType = (row?.mime_type ?? "").toLowerCase();
-      if (storagePath) {
+      if (!fileErr && Array.isArray(fileRows) && fileRows.length > 0) {
+        const row = fileRows[0] as { storage_path?: string; mime_type?: string };
+        storagePath = row?.storage_path ?? "";
+        mimeType = (row?.mime_type ?? "").toLowerCase();
+        if (storagePath) {
+          const { data: fileData, error: downloadErr } = await supabase.storage
+            .from(STORAGE_BUCKET)
+            .download(storagePath);
+          if (!downloadErr && fileData) {
+            bytes = new Uint8Array(await fileData.arrayBuffer());
+            console.log("[parse-resume-to-doc] file from resume_files, size:", bytes.length, "mime:", mimeType);
+          }
+        }
+      }
+
+      if (!bytes && r.source_text?.trim()) {
+        sourceText = r.source_text.trim();
+        console.log("[parse-resume-to-doc] using resumes.source_text, length:", sourceText.length);
+        bytes = null;
+      } else if (!bytes && r.file_path?.trim()) {
+        storagePath = r.file_path;
+        mimeType = "";
         const { data: fileData, error: downloadErr } = await supabase.storage
           .from(STORAGE_BUCKET)
           .download(storagePath);
-        if (!downloadErr && fileData) {
-          bytes = new Uint8Array(await fileData.arrayBuffer());
-          console.log("[parse-resume-to-doc] file from resume_files, size:", bytes.length, "mime:", mimeType);
+        if (downloadErr || !fileData) {
+          return errResponse("load file", downloadErr?.message ?? "Could not download file", 400);
         }
+        bytes = new Uint8Array(await fileData.arrayBuffer());
+        console.log("[parse-resume-to-doc] file from resumes.file_path, size:", bytes.length);
       }
-    }
 
-    if (!bytes && r.source_text?.trim()) {
-      sourceText = r.source_text.trim();
-      console.log("[parse-resume-to-doc] using resumes.source_text, length:", sourceText.length);
-      bytes = null;
-    } else if (!bytes && r.file_path?.trim()) {
-      storagePath = r.file_path;
-      mimeType = "";
-      const { data: fileData, error: downloadErr } = await supabase.storage
-        .from(STORAGE_BUCKET)
-        .download(storagePath);
-      if (downloadErr || !fileData) {
-        return errResponse("load file", downloadErr?.message ?? "Could not download file", 400);
+      if (bytes) {
+        console.log("[parse-resume-to-doc] stage: extract text");
+        const ext = storagePath.split(".").pop()?.toLowerCase() ?? "";
+        if (mimeType === "application/pdf" || ext === "pdf") {
+          sourceText = await extractPdfText(bytes);
+        } else if (mimeType === "text/plain" || ext === "txt") {
+          sourceText = new TextDecoder("utf-8").decode(bytes).trim();
+        } else if (
+          mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+          ext === "docx"
+        ) {
+          sourceText = await extractDocxText(bytes);
+        } else {
+          return errResponse("extract text", `Unsupported type: ${mimeType || ext}. Use PDF, TXT, or DOCX.`, 400);
+        }
+        if (!sourceText || sourceText.length < 20) {
+          return errResponse("extract text", "Extracted text is empty or too short", 400);
+        }
+        console.log("[parse-resume-to-doc] extracted text length:", sourceText.length);
       }
-      bytes = new Uint8Array(await fileData.arrayBuffer());
-      console.log("[parse-resume-to-doc] file from resumes.file_path, size:", bytes.length);
+    } catch (e) {
+      return errResponse("load file", String(e), 500);
     }
-
-    if (bytes) {
-      console.log("[parse-resume-to-doc] stage: extract text");
-      const ext = storagePath.split(".").pop()?.toLowerCase() ?? "";
-      if (mimeType === "application/pdf" || ext === "pdf") {
-        sourceText = await extractPdfText(bytes);
-      } else if (mimeType === "text/plain" || ext === "txt") {
-        sourceText = new TextDecoder("utf-8").decode(bytes).trim();
-      } else if (
-        mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
-        ext === "docx"
-      ) {
-        sourceText = await extractDocxText(bytes);
-      } else {
-        return errResponse("extract text", `Unsupported type: ${mimeType || ext}. Use PDF, TXT, or DOCX.`, 400);
-      }
-      if (!sourceText || sourceText.length < 20) {
-        return errResponse("extract text", "Extracted text is empty or too short", 400);
-      }
-      console.log("[parse-resume-to-doc] extracted text length:", sourceText.length);
-    }
-  } catch (e) {
-    return errResponse("load file", String(e), 500);
   }
 
   if (typeof sourceText !== "string" || !sourceText.trim()) {

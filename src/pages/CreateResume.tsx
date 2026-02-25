@@ -7,7 +7,12 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { FileUp, Type, Code, FileText, ArrowRight, Info, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { usePdfTextExtraction } from "@/hooks/usePdfTextExtraction";
 import { createProjectFromSource } from "@/lib/resumeRepo";
+
+function isPdf(file: File): boolean {
+  return file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+}
 
 type InputMethod = "upload" | "paste" | "latex";
 
@@ -30,6 +35,8 @@ export default function CreateResume() {
   const [pastedText, setPastedText] = useState("");
   const [latexText, setLatexText] = useState("");
   const attemptedFileRef = useRef<File | null>(null);
+  const pdfCreateStartedRef = useRef(false);
+  const pdfExtract = usePdfTextExtraction();
 
   const clearSourceAndId = useCallback(() => {
     setResumeId(null);
@@ -67,9 +74,49 @@ export default function CreateResume() {
     [clearSourceAndId]
   );
 
-  // When user uploads a file: create project from source, store resumeId, do NOT navigate
+  // When user selects a PDF: extract text client-side, then create project with text
+  useEffect(() => {
+    if (method !== "upload" || !selectedFile || !user?.id || !isPdf(selectedFile)) return;
+    if (attemptedFileRef.current === selectedFile) return;
+    attemptedFileRef.current = selectedFile;
+    pdfCreateStartedRef.current = false;
+    pdfExtract.run(selectedFile);
+  }, [method, selectedFile, user?.id]);
+
+  // When PDF extraction succeeds: go to review page so user can verify extracted text
+  useEffect(() => {
+    if (
+      pdfExtract.status !== "success" ||
+      !pdfExtract.text ||
+      attemptedFileRef.current === null ||
+      pdfCreateStartedRef.current
+    )
+      return;
+    pdfCreateStartedRef.current = true;
+    navigate("/dashboard/create/review", {
+      state: { extractedText: pdfExtract.text },
+      replace: false,
+    });
+    pdfExtract.reset();
+  }, [pdfExtract.status, pdfExtract.text, navigate]);
+
+  // When PDF extraction fails: show error and allow retry
+  useEffect(() => {
+    if (pdfExtract.status !== "error" || !pdfExtract.error) return;
+    toast.error(pdfExtract.error.messageUser);
+    console.debug("[pdf-extract]", {
+      code: pdfExtract.error.code,
+      messageDev: pdfExtract.error.messageDev,
+      meta: pdfExtract.meta,
+    });
+    attemptedFileRef.current = null;
+    pdfExtract.reset();
+  }, [pdfExtract.status, pdfExtract.error, pdfExtract.meta]);
+
+  // When user uploads a non-PDF file: create project from source (file upload)
   useEffect(() => {
     if (method !== "upload" || !selectedFile || !user?.id || creating || resumeId) return;
+    if (isPdf(selectedFile)) return;
     if (attemptedFileRef.current === selectedFile) return;
     attemptedFileRef.current = selectedFile;
     setCreating(true);
@@ -108,7 +155,7 @@ export default function CreateResume() {
       toast.error("Please upload or paste your resume first.");
       return;
     }
-    navigate(`/dashboard/scanning?resumeId=${resumeId}`);
+    navigate(`/dashboard/editor/${resumeId}/template`);
   }, [resumeId, navigate]);
 
   const setMethodAndClear = useCallback(
@@ -201,7 +248,7 @@ export default function CreateResume() {
                     className="hidden"
                     onChange={handleFileSelect}
                   />
-                  {creating && selectedFile ? (
+                  {(creating && selectedFile) || pdfExtract.status === "extracting" ? (
                     <Loader2 className="mb-3 h-10 w-10 animate-spin text-muted-foreground" />
                   ) : (
                     <FileUp className="mb-3 h-10 w-10 text-muted-foreground" />

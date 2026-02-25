@@ -1,40 +1,12 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { ProjectList } from "@/components/ProjectList";
 import { ProjectCardGrid } from "@/components/ProjectCardGrid";
-import { FileUp, Link2, FilePlus, Activity } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { FileUp, Link2, FilePlus } from "lucide-react";
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [pingLoading, setPingLoading] = useState(false);
-
-  const handleTestParsePing = async () => {
-    setPingLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("parse-resume-to-doc", {
-        body: { ping: true },
-      });
-      console.log("[parse-resume-to-doc ping]", { data, error });
-      if (error) {
-        toast.error(`Ping failed: ${error.message}`);
-        return;
-      }
-      if (data?.ok === true && data?.pong === true) {
-        toast.success("Parse ping OK — check Supabase Edge Function logs.");
-      } else {
-        toast.info(JSON.stringify(data ?? {}));
-      }
-    } catch (err) {
-      console.error("[parse-resume-to-doc ping]", err);
-      toast.error(err instanceof Error ? err.message : "Ping request failed");
-    } finally {
-      setPingLoading(false);
-    }
-  };
 
   return (
     <DashboardLayout>
@@ -55,16 +27,6 @@ export default function Dashboard() {
           </Button>
           <Button size="lg" variant="outline" onClick={() => navigate("/dashboard/sync")}>
             <Link2 className="mr-2 h-4 w-4" /> Sync Profiles
-          </Button>
-          <Button
-            size="lg"
-            variant="outline"
-            onClick={handleTestParsePing}
-            disabled={pingLoading}
-            title="Temporary: test parse-resume-to-doc reachability (ping, no Gemini/storage)"
-          >
-            <Activity className="mr-2 h-4 w-4" />
-            {pingLoading ? "Pinging…" : "Test parse ping"}
           </Button>
         </div>
 

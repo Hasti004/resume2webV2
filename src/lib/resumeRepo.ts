@@ -13,8 +13,6 @@ export {
   getResumeMeta,
   getResumeSource,
   saveParsedResult,
-  parseWithGemini,
-  parseResumeWithGemini,
   setTemplateId,
   getResumeTemplateId,
   loadResumeDoc,
@@ -34,7 +32,6 @@ export type {
   ResumeDoc,
   CreateProjectSource,
   ResumeListItem,
-  ParseResult,
   AiEditInput,
   AiEditResult,
 } from "@/repositories/resumeRepo";

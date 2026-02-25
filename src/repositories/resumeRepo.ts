@@ -3,7 +3,6 @@ import type { IntakeProfile } from "@/features/intake/types";
 
 const RESUMES_TABLE = "resumes";
 const RESUME_BLOCKS_TABLE = "resume_blocks";
-const PARSE_EDGE_FUNCTION = "parse-resume-to-doc";
 const AI_EDIT_EDGE_FUNCTION = "ai-edit-resume-doc";
 
 export interface ResumeRow {
@@ -201,9 +200,9 @@ export async function setDraftSource(
 }
 
 /**
- * Create a resume project from uploaded file or pasted text. Stores source for parse-resume-to-doc.
+ * Create a resume project from uploaded file or pasted text.
  * If existingResumeId is provided, uses that draft and only sets source (no new row). Otherwise creates a new draft.
- * Returns the resume id. Does not parse; caller may call parseWithGemini(resumeId) and navigate.
+ * Returns the resume id.
  */
 export async function createProjectFromSource(
   userId: string,
@@ -510,63 +509,6 @@ export async function saveParsedResult(
     const { error: insertError } = await supabase.from(RESUME_BLOCKS_TABLE).insert(rows);
     if (insertError) throw insertError;
   }
-}
-
-export interface ParseResult {
-  success: true;
-  durationMs?: number;
-}
-
-const parseInFlight = new Map<string, Promise<ParseResult>>();
-
-/**
- * Call Edge Function parse-resume-to-doc. Function loads source from DB, calls Gemini, saves basics + blocks.
- * Returns structured result. Prevents duplicate concurrent calls for the same resumeId.
- */
-export async function parseWithGemini(resumeId: string): Promise<ParseResult> {
-  const id = resumeId?.trim();
-  if (!id) {
-    throw new Error("Resume ID is required.");
-  }
-
-  const existing = parseInFlight.get(id);
-  if (existing) return existing;
-
-  const promise = (async (): Promise<ParseResult> => {
-    try {
-      const { data, error } = await supabase.functions.invoke<{
-        ok?: boolean;
-        error?: string;
-        code?: string;
-        durationMs?: number;
-        basicsCount?: number;
-        blocksCount?: number;
-      }>(PARSE_EDGE_FUNCTION, { body: { resumeId: id } });
-
-      if (data?.error) {
-        const msg = data.error;
-        const code = data.code;
-        throw new Error(code ? `${msg} (${code})` : msg);
-      }
-      if (error) {
-        throw new Error(error.message || "Parse request failed.");
-      }
-      if (data?.ok !== true) {
-        throw new Error("Parsing did not complete. Please try again or skip to manual edit.");
-      }
-      return { success: true as const, durationMs: data?.durationMs };
-    } finally {
-      parseInFlight.delete(id);
-    }
-  })();
-
-  parseInFlight.set(id, promise);
-  return promise;
-}
-
-/** @deprecated Use parseWithGemini. Kept for backward compatibility. */
-export async function parseResumeWithGemini(resumeId: string): Promise<void> {
-  return parseWithGemini(resumeId);
 }
 
 export interface AiEditInput {

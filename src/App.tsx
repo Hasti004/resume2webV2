@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import CreateResume from "./pages/CreateResume";
+import ReviewExtractedText from "./pages/ReviewExtractedText";
 import ResumeScanning from "./pages/ResumeScanning";
 import EditSite from "./pages/EditSite";
 import EditorRedirect from "./pages/EditorRedirect";
@@ -45,6 +46,7 @@ const App = () => (
           {/* Dashboard */}
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/dashboard/create" element={<CreateResume />} />
+          <Route path="/dashboard/create/review" element={<ReviewExtractedText />} />
           <Route path="/dashboard/scanning" element={<ResumeScanning />} />
           <Route path="/dashboard/edit" element={<EditSite />} />
           <Route path="/dashboard/editor" element={<DashboardEditorRedirect />} />

@@ -1,0 +1,244 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here.
+   All colors MUST be HSL. */
+
+@layer base {
+  :root {
+    --background: 220 35% 97%; /* soft powder blue/grey #F4F6FB */
+    --foreground: 0 0% 10%; /* headline text #1A1A1A */
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
+
+    --primary: 250 50% 60%; /* deep violet #6A5ACD */
+    --primary-foreground: 0 0% 100%; /* white text */
+
+    --secondary: 210 100% 80%; /* powder blue #A1C4FD */
+    --secondary-foreground: 0 0% 10%;
+
+    --muted: 220 25% 95%;
+    --muted-foreground: 0 0% 29%; /* subtle text #4B4B4B */
+
+    --accent: 210 100% 85%; /* light blue accent */
+    --accent-foreground: 0 0% 10%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 20% 90%;
+    --input: 220 20% 90%;
+    --ring: 250 50% 60%;
+
+    --radius: 1.25rem;
+
+    --gradient-primary: linear-gradient(135deg, #6A5ACD, #483D8B);
+    --gradient-accent: linear-gradient(135deg, #A1C4FD, #C2E9FB);
+    --glow-light: rgba(162, 189, 255, 0.25);
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 0 0% 10%;
+    --sidebar-primary: 250 50% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 100% 80%;
+    --sidebar-accent-foreground: 0 0% 10%;
+    --sidebar-border: 220 20% 90%;
+    --sidebar-ring: 250 50% 60%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+    min-height: 100%;
+  }
+
+  body {
+    @apply text-foreground;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    min-height: 100vh;
+    background-color: hsl(var(--background));
+    background-image: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 31px,
+      hsl(220 20% 88% / 0.5) 31px,
+      hsl(220 20% 88% / 0.5) 32px
+    );
+    background-size: 100% 32px;
+    background-attachment: fixed;
+    color: hsl(0 0% 10%);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: "Inter Tight", "Inter", sans-serif;
+    letter-spacing: -0.025em;
+  }
+
+  #root {
+    min-height: 100vh;
+    width: 100%;
+  }
+}
+
+@layer components {
+  .heading-font {
+    font-family: "Inter Tight", "Inter", sans-serif;
+    letter-spacing: -0.025em;
+  }
+  .logo {
+    height: 6em;
+    padding: 1.5em;
+    will-change: filter;
+    transition: filter 300ms;
+  }
+  .logo:hover {
+    filter: drop-shadow(0 0 2em #646cffaa);
+  }
+  .logo.react:hover {
+    filter: drop-shadow(0 0 2em #61dafbaa);
+  }
+
+  .card {
+    padding: 2em;
+  }
+
+  .read-the-docs {
+    color: #888;
+  }
+}
+
+@layer utilities {
+  .gradient-primary {
+    background: linear-gradient(135deg, #6A5ACD, #483D8B);
+  }
+
+  .gradient-accent {
+    background: linear-gradient(135deg, #A1C4FD, #C2E9FB);
+  }
+
+  .gradient-text {
+    background: linear-gradient(135deg, #6A5ACD, #483D8B);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .glow-primary {
+    box-shadow: 0 8px 32px rgba(106, 90, 205, 0.25);
+  }
+
+  .glow-light {
+    box-shadow: 0 8px 24px rgba(162, 189, 255, 0.25);
+  }
+
+  .fade-up {
+    animation: fadeUp 0.8s ease-out forwards;
+  }
+
+  @keyframes fadeUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .hover-lift {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 12px 40px rgba(106, 90, 205, 0.2);
+  }
+
+  /* Optional: use on a section if you want notebook lines in a contained area; body has full-page lines */
+  .notebook-paper-bg {
+    background-color: hsl(var(--background));
+    background-image: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 31px,
+      hsl(220 20% 88% / 0.5) 31px,
+      hsl(220 20% 88% / 0.5) 32px
+    );
+    background-size: 100% 32px;
+  }
+
+  .paper-card {
+    @apply bg-card border border-border/50 shadow-sm;
+  }
+
+  .pink-highlight {
+    @apply text-foreground;
+    background: linear-gradient(180deg, transparent 60%, hsl(250 50% 60% / 0.15) 60%);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin 20s linear infinite;
+  }
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

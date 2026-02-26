@@ -8,6 +8,7 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import CreateResume from "./pages/CreateResume";
 import ReviewExtractedText from "./pages/ReviewExtractedText";
+import ViewStructuredResume from "./pages/ViewStructuredResume";
 import ResumeScanning from "./pages/ResumeScanning";
 import EditSite from "./pages/EditSite";
 import EditorRedirect from "./pages/EditorRedirect";
@@ -51,6 +52,7 @@ const App = () => (
           <Route path="/dashboard/edit" element={<EditSite />} />
           <Route path="/dashboard/editor" element={<DashboardEditorRedirect />} />
           <Route path="/dashboard/editor/:resumeId" element={<DashboardEditorPage />} />
+          <Route path="/dashboard/editor/:resumeId/structured" element={<ViewStructuredResume />} />
           <Route path="/dashboard/editor/:resumeId/edit" element={<EditorEditPage />} />
           <Route path="/dashboard/editor/:resumeId/template" element={<TemplateSelection />} />
           <Route path="/dashboard/templates" element={<TemplatesRedirect />} />

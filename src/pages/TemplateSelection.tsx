@@ -13,9 +13,8 @@ import { cn } from "@/lib/utils";
 
 /**
  * Route: /dashboard/editor/:resumeId/template
- * resumeId from route params only (no hardcoded or numeric fallback).
- * If missing or draft not found/not owned → error + "Go to Dashboard".
- * On template select: setTemplateId then navigate to /dashboard/editor/:resumeId/edit.
+ * resumeId from route params. If missing → error. For testing, templates are shown even when not signed in.
+ * When signed in: draft ownership is checked. On template select: setTemplateId then navigate to edit.
  */
 export default function TemplateSelection() {
   const { resumeId } = useParams<{ resumeId: string }>();
@@ -34,7 +33,7 @@ export default function TemplateSelection() {
       return;
     }
     if (!user?.id) {
-      setRouteError("Please sign in to choose a template.");
+      setRouteReady(true);
       return;
     }
     let cancelled = false;

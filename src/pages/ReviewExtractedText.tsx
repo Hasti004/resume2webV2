@@ -5,13 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { ArrowLeft, ArrowRight, FileText, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { createProjectFromSource } from "@/lib/resumeRepo";
+import { createProjectFromSource, structureResumeWithGemini } from "@/lib/resumeRepo";
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
 
 /**
  * Median page: shows extracted text from PDF so the user can verify extraction.
- * Continue → create project → go to template selection (no Edge Function parse).
+ * Continue → create project → structure with Gemini (structure-resume-with-gemini) → template selection.
  */
 export default function ReviewExtractedText() {
   const navigate = useNavigate();
@@ -41,9 +41,10 @@ export default function ReviewExtractedText() {
     try {
       const newId = await createProjectFromSource(user.id, { text });
       console.log("created resumeId (from review):", newId);
-      navigate(`/dashboard/editor/${newId}/template`, { replace: true });
+      const structured = await structureResumeWithGemini(newId, text);
+      navigate(`/dashboard/editor/${newId}/structured`, { state: structured, replace: false });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to create project");
+      toast.error(err instanceof Error ? err.message : "Failed to create or structure resume");
     } finally {
       setCreating(false);
     }
@@ -111,11 +112,11 @@ export default function ReviewExtractedText() {
               {creating ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating…
+                  Creating & structuring… (may take up to a minute)
                 </>
               ) : (
                 <>
-                  Continue to template
+                  Continue
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </>
               )}

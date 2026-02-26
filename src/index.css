@@ -242,3 +242,162 @@
     transform: rotate(360deg);
   }
 }
+
+/* Portfolio template animations and graphics */
+@keyframes portfolio-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes portfolio-float {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(6px, -8px);
+  }
+}
+
+@keyframes portfolio-float-slow {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(-4px, 6px);
+  }
+}
+
+@keyframes portfolio-gradient-shift {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes portfolio-pulse-soft {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes portfolio-blob {
+  0%,
+  100% {
+    transform: scale(1) translate(0, 0);
+  }
+  33% {
+    transform: scale(1.05) translate(10px, -10px);
+  }
+  66% {
+    transform: scale(0.98) translate(-5px, 5px);
+  }
+}
+
+.portfolio-animate-fade-up {
+  animation: portfolio-fade-up 0.6s ease-out forwards;
+}
+
+.portfolio-animate-float {
+  animation: portfolio-float 6s ease-in-out infinite;
+}
+
+.portfolio-animate-float-slow {
+  animation: portfolio-float-slow 8s ease-in-out infinite;
+}
+
+.portfolio-animate-pulse {
+  animation: portfolio-pulse-soft 3s ease-in-out infinite;
+}
+
+.portfolio-hover-lift {
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.portfolio-hover-lift:hover {
+  transform: translateY(-4px);
+}
+
+.portfolio-card-glow:hover {
+  box-shadow: 0 0 0 1px currentColor;
+}
+
+.portfolio-gradient-animated {
+  background-size: 200% 200%;
+  animation: portfolio-gradient-shift 8s ease infinite;
+}
+
+/* Cinematic template */
+@keyframes cinematic-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(32px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes cinematic-orb-float {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  25% {
+    transform: translate(5%, -8%) scale(1.05);
+  }
+  50% {
+    transform: translate(-5%, 5%) scale(0.95);
+  }
+  75% {
+    transform: translate(8%, 3%) scale(1.02);
+  }
+}
+
+.cinematic-portfolio {
+  scroll-behavior: smooth;
+}
+
+.cinematic-scrollbar::-webkit-scrollbar {
+  height: 8px;
+}
+
+.cinematic-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+.cinematic-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+.cinematic-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cinematic-orb,
+  .cinematic-cursor-glow,
+  .cinematic-contact-glow [class*="absolute"] {
+    animation: none !important;
+  }
+  .cinematic-portfolio [style*="animation"] {
+    animation-duration: 0.01ms !important;
+  }
+}

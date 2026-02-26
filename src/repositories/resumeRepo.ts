@@ -4,6 +4,7 @@ import type { IntakeProfile } from "@/features/intake/types";
 const RESUMES_TABLE = "resumes";
 const RESUME_BLOCKS_TABLE = "resume_blocks";
 const AI_EDIT_EDGE_FUNCTION = "ai-edit-resume-doc";
+const STRUCTURE_RESUME_EDGE_FUNCTION = "structure-resume-with-gemini";
 
 export interface ResumeRow {
   id: string;
@@ -268,6 +269,48 @@ export async function getResumeTemplateId(resumeId: string): Promise<string | nu
   if (error) throw error;
   const id = data?.template_id;
   return typeof id === "string" && id.trim() ? id : null;
+}
+
+export interface StructureResumeResult {
+  ok: true;
+  blocksCount: number;
+  basics: Record<string, unknown>;
+  blocks: Array<{ type: string; title: string | null; data: Record<string, unknown> }>;
+}
+
+/**
+ * Call Edge Function structure-resume-with-gemini with extracted text. Structures resume via Gemini and saves basics + blocks. Returns structured data for display.
+ */
+export async function structureResumeWithGemini(resumeId: string, text: string): Promise<StructureResumeResult> {
+  const id = resumeId?.trim();
+  const trimmedText = text?.trim();
+  if (!id) throw new Error("Resume ID is required.");
+  if (!trimmedText || trimmedText.length < 20) throw new Error("Resume text must be at least 20 characters.");
+
+  const { data, error } = await supabase.functions.invoke<{
+    ok?: boolean;
+    error?: string;
+    message?: string;
+    blocksCount?: number;
+    basics?: Record<string, unknown>;
+    blocks?: Array<{ type: string; title?: string | null; data?: Record<string, unknown> }>;
+  }>(STRUCTURE_RESUME_EDGE_FUNCTION, { body: { resumeId: id, text: trimmedText } });
+
+  if (data?.error) {
+    throw new Error(data.message ?? data.error ?? "Structuring failed.");
+  }
+  if (error) {
+    throw new Error(error.message ?? "Structure request failed.");
+  }
+  if (data?.ok !== true) {
+    throw new Error("Structuring did not complete. Please try again.");
+  }
+  return {
+    ok: true as const,
+    blocksCount: data?.blocksCount ?? 0,
+    basics: data?.basics ?? {},
+    blocks: (data?.blocks ?? []).map((b) => ({ type: b.type, title: b.title ?? null, data: b.data ?? {} })),
+  };
 }
 
 /**

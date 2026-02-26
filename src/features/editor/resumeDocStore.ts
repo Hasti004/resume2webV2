@@ -1,9 +1,12 @@
 import { create } from "zustand";
 import type { ResumeBasics, ResumeBlock, ResumeDoc } from "@/lib/resumeRepo";
 
+export type EditorTheme = "light" | "dark";
+
 export interface EditorState {
   resumeId: string | null;
   templateId: string | null;
+  theme: EditorTheme;
   basics: ResumeBasics;
   blocks: ResumeBlock[];
   selectedBlockId: string | null;
@@ -13,6 +16,7 @@ export interface EditorState {
 
 export interface EditorActions {
   setDoc: (resumeId: string, doc: ResumeDoc) => void;
+  setTheme: (theme: EditorTheme) => void;
   updateBasics: (patch: Partial<ResumeBasics>) => void;
   updateBlock: (blockId: string, patch: Partial<ResumeBlock>) => void;
   /** Apply full basics and blocks (e.g. after Accept All from AI proposal). */
@@ -33,6 +37,7 @@ function generateBlockId(): string {
 export const useResumeDocStore = create<EditorState & EditorActions>((set) => ({
   resumeId: null,
   templateId: null,
+  theme: "dark",
   basics: {},
   blocks: [],
   selectedBlockId: null,
@@ -43,12 +48,15 @@ export const useResumeDocStore = create<EditorState & EditorActions>((set) => ({
     set({
       resumeId,
       templateId: doc.templateId,
+      theme: doc.templateId === "minimal-monochrome" ? "dark" : "light",
       basics: doc.basics ?? {},
       blocks: doc.blocks ?? [],
       selectedBlockId: null,
       dirty: false,
       saving: false,
     }),
+
+  setTheme: (theme) => set({ theme }),
 
   updateBasics: (patch) =>
     set((state) => ({

@@ -87,6 +87,33 @@ export default function EditorEditPage() {
   const getState = useResumeDocStore.getState;
   const templateId = useResumeDocStore((s) => s.templateId);
   const [previewZoom, setPreviewZoom] = useState(100);
+  const [editorPanelWidthPercent, setEditorPanelWidthPercent] = useState(42);
+  const [isDraggingSplit, setIsDraggingSplit] = useState(false);
+  const splitRef = useRef<HTMLDivElement>(null);
+
+  const handleSplitMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDraggingSplit(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isDraggingSplit) return;
+    const onMove = (e: MouseEvent) => {
+      const container = splitRef.current?.closest(".flex.min-h-0");
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const pct = Math.round((x / rect.width) * 100);
+      setEditorPanelWidthPercent(Math.min(70, Math.max(28, pct)));
+    };
+    const onUp = () => setIsDraggingSplit(false);
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [isDraggingSplit]);
 
   useEffect(() => {
     if (!resumeId) return;
@@ -261,8 +288,13 @@ export default function EditorEditPage() {
         </Dialog>
 
         <Tabs defaultValue="basics" className="flex flex-1 min-h-0 flex-col">
-          <div className="flex flex-1 min-h-0">
-            {/* Left: Tab triggers */}
+          <div ref={splitRef} className="flex flex-1 min-h-0">
+            {/* Left: Editor (sidebar + content) — resizable width */}
+            <div
+              className="flex shrink-0 flex-col min-h-0"
+              style={{ width: `${editorPanelWidthPercent}%`, minWidth: 320 }}
+            >
+            {/* Tab triggers */}
             <aside className="w-52 shrink-0 border-r border-border bg-muted/30 flex flex-col">
               <div className="p-2 border-b border-border">
                 <Button variant="ghost" size="sm" asChild className="w-full justify-start gap-2">
@@ -298,9 +330,21 @@ export default function EditorEditPage() {
                 </TabsContent>
               </ScrollArea>
             </main>
+            </div>
 
-          {/* Right: Preview panel — toolbar (template name, zoom 80/100/120) + scrollable preview */}
-          <aside className="w-[420px] shrink-0 flex flex-col bg-muted/20 min-h-0">
+          {/* Resize handle */}
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            onMouseDown={handleSplitMouseDown}
+            className={`shrink-0 w-1.5 flex flex-col items-center cursor-col-resize border-l border-r border-border bg-muted/50 hover:bg-primary/20 transition-colors min-h-0 ${isDraggingSplit ? "bg-primary/30" : ""}`}
+            title="Drag to resize"
+          >
+            <div className="w-1 h-12 rounded-full bg-muted-foreground/30 mt-4" />
+          </div>
+
+          {/* Right: Preview panel — resizable */}
+          <aside className="flex-1 min-w-[320px] flex flex-col bg-muted/20 min-h-0">
             <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2">
               <span className="text-sm font-medium text-foreground">Preview</span>
               <div className="flex items-center gap-1">

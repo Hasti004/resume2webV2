@@ -28,8 +28,8 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen flex-col bg-transparent">
-      <nav className="sticky top-0 z-50 w-full h-16 border-b border-border bg-card/80 backdrop-blur-sm">
-        <div className="mx-auto flex h-full max-w-6xl items-center justify-between px-6">
+      <nav className="sticky top-0 z-50 h-16 w-full border-b border-border bg-card/80 backdrop-blur-sm">
+        <div className="mx-auto flex h-full w-full max-w-7xl items-center justify-between px-6">
           <Link
             to="/dashboard"
             className="font-bold text-xl text-foreground"

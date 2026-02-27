@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { ArrowLeft, ArrowRight, FileText, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { createProjectFromSource, structureResumeWithGemini } from "@/lib/resumeRepo";
+import { createProjectFromSource, structureResumeWithGemini, saveParsedResult } from "@/lib/resumeRepo";
+import type { ResumeBasics } from "@/lib/resumeRepo";
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
 
@@ -42,6 +43,15 @@ export default function ReviewExtractedText() {
       const newId = await createProjectFromSource(user.id, { text });
       console.log("created resumeId (from review):", newId);
       const structured = await structureResumeWithGemini(newId, text);
+      // Persist Gemini result so the editor and loadResumeDoc show it for editing
+      await saveParsedResult(newId, {
+        basics: (structured.basics ?? {}) as ResumeBasics,
+        blocks: (structured.blocks ?? []).map((b, i) => ({
+          type: b.type,
+          content: { title: b.title ?? undefined, ...(b.data ?? {}) },
+          sort_order: i,
+        })),
+      });
       navigate(`/dashboard/editor/${newId}/structured`, { state: structured, replace: false });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to create or structure resume");

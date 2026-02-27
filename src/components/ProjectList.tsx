@@ -65,7 +65,7 @@ export function ProjectList() {
                 </span>
               )}
               <Button asChild size="sm" variant="ghost">
-                <Link to={`/dashboard/editor/${p.id}`}>Continue →</Link>
+                <Link to={`/dashboard/editor/${p.id}/edit`}>Continue →</Link>
               </Button>
               <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive">
                 <Trash2 className="h-4 w-4" />

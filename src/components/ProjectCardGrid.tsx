@@ -41,7 +41,7 @@ export function ProjectCardGrid() {
               {p.status}
             </span>
             <Button asChild size="sm" variant="ghost" className="text-primary">
-              <Link to={`/dashboard/editor/${p.id}`}>Continue →</Link>
+              <Link to={`/dashboard/editor/${p.id}/edit`}>Continue →</Link>
             </Button>
           </div>
         </div>

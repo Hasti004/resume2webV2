@@ -10,8 +10,8 @@ export default function Dashboard() {
 
   return (
     <DashboardLayout>
-      <div className="min-h-screen px-6 py-12">
-        <div className="mx-auto mb-12 max-w-4xl text-center">
+      <div className="min-h-screen w-full max-w-7xl px-6 py-12 mx-auto">
+        <div className="mb-12 text-center">
           <h1 className="heading-font mb-4 text-5xl font-bold tracking-[-0.025em] text-foreground md:text-6xl">
             <span className="pink-highlight">New work done?</span>
             <br />
@@ -30,7 +30,7 @@ export default function Dashboard() {
           </Button>
         </div>
 
-        <div className="mx-auto max-w-7xl space-y-10">
+        <div className="space-y-10">
           <section>
             <h2 className="text-3xl font-bold text-foreground">Your Resumes</h2>
             <p className="mt-1 text-muted-foreground">

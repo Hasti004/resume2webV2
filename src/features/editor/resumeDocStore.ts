@@ -6,6 +6,10 @@ export type EditorTheme = "light" | "dark";
 export interface EditorState {
   resumeId: string | null;
   templateId: string | null;
+  /** Snapshot when template picker opens; used to revert on close if not applied. */
+  originalTemplateId: string | null;
+  /** Temporary template for hover/preview; null falls back to templateId. */
+  previewTemplateId: string | null;
   theme: EditorTheme;
   basics: ResumeBasics;
   blocks: ResumeBlock[];
@@ -16,8 +20,13 @@ export interface EditorState {
 
 export interface EditorActions {
   setDoc: (resumeId: string, doc: ResumeDoc) => void;
+  setTemplateId: (templateId: string | null) => void;
+  setOriginalTemplateId: (templateId: string | null) => void;
+  setPreviewTemplateId: (templateId: string | null) => void;
   setTheme: (theme: EditorTheme) => void;
   updateBasics: (patch: Partial<ResumeBasics>) => void;
+  /** Remove a key from basics (e.g. custom section). */
+  removeBasicKey: (key: string) => void;
   updateBlock: (blockId: string, patch: Partial<ResumeBlock>) => void;
   /** Apply full basics and blocks (e.g. after Accept All from AI proposal). */
   setBasicsAndBlocks: (basics: ResumeBasics, blocks: ResumeBlock[]) => void;
@@ -37,6 +46,8 @@ function generateBlockId(): string {
 export const useResumeDocStore = create<EditorState & EditorActions>((set) => ({
   resumeId: null,
   templateId: null,
+  originalTemplateId: null,
+  previewTemplateId: null,
   theme: "dark",
   basics: {},
   blocks: [],
@@ -48,6 +59,8 @@ export const useResumeDocStore = create<EditorState & EditorActions>((set) => ({
     set({
       resumeId,
       templateId: doc.templateId,
+      originalTemplateId: null,
+      previewTemplateId: null,
       theme: doc.templateId === "minimal-monochrome" ? "dark" : "light",
       basics: doc.basics ?? {},
       blocks: doc.blocks ?? [],
@@ -56,6 +69,22 @@ export const useResumeDocStore = create<EditorState & EditorActions>((set) => ({
       saving: false,
     }),
 
+  setTemplateId: (templateId) =>
+    set((state) => ({
+      templateId,
+      theme: templateId === "minimal-monochrome" ? "dark" : state.theme,
+    })),
+
+  setOriginalTemplateId: (templateId) =>
+    set(() => ({
+      originalTemplateId: templateId,
+    })),
+
+  setPreviewTemplateId: (templateId) =>
+    set(() => ({
+      previewTemplateId: templateId,
+    })),
+
   setTheme: (theme) => set({ theme }),
 
   updateBasics: (patch) =>
@@ -63,6 +92,12 @@ export const useResumeDocStore = create<EditorState & EditorActions>((set) => ({
       basics: { ...state.basics, ...patch },
       dirty: true,
     })),
+
+  removeBasicKey: (key) =>
+    set((state) => {
+      const { [key]: _, ...rest } = state.basics;
+      return { basics: rest, dirty: true };
+    }),
 
   updateBlock: (blockId, patch) =>
     set((state) => ({

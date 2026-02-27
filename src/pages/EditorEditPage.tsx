@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { useParams, Link } from "react-router-dom";
-import { DashboardLayout } from "@/components/DashboardLayout";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useParams } from "react-router-dom";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -14,8 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { useResumeDocStore } from "@/features/editor/resumeDocStore";
 import { EditorBasicsPanel } from "@/features/editor/EditorBasicsPanel";
-import { EditorContentPanel } from "@/features/editor/EditorContentPanel";
-import { EditorAIPanel } from "@/features/editor/EditorAIPanel";
+import { AIChatPanel } from "@/features/ai/AIChatPanel";
 import { PreviewRenderer } from "@/features/editor/PreviewRenderer";
 import { loadResumeDoc, getResumeUpdatedAt, saveAll, markLastOpened } from "@/lib/resumeRepo";
 import type { ResumeDoc } from "@/lib/resumeRepo";
@@ -26,7 +24,8 @@ import {
   LOCAL_SAVE_INTERVAL_MS,
   CLOUD_SAVE_DEBOUNCE_MS,
 } from "@/features/editor/constants";
-import { ArrowLeft, User, LayoutList, Sparkles, ZoomIn, ZoomOut, Loader2, Check } from "lucide-react";
+import { EditorLayout } from "@/components/editor/EditorLayout";
+import { EditorTopbar, type EditorMode } from "@/components/editor/EditorTopbar";
 
 interface LocalDraft {
   basics: ResumeDoc["basics"];
@@ -89,6 +88,7 @@ export default function EditorEditPage() {
   const [previewZoom, setPreviewZoom] = useState(100);
   const [editorPanelWidthPercent, setEditorPanelWidthPercent] = useState(42);
   const [isDraggingSplit, setIsDraggingSplit] = useState(false);
+  const [activeTab, setActiveTab] = useState<EditorMode>("basics");
   const splitRef = useRef<HTMLDivElement>(null);
 
   const handleSplitMouseDown = useCallback((e: React.MouseEvent) => {
@@ -218,55 +218,41 @@ export default function EditorEditPage() {
 
   if (!resumeId) {
     return (
-      <DashboardLayout>
+      <EditorLayout>
         <div className="p-6 text-muted-foreground">Missing resume ID.</div>
-      </DashboardLayout>
+      </EditorLayout>
     );
   }
 
   if (loading) {
     return (
-      <DashboardLayout>
-        <div className="flex min-h-[60vh] items-center justify-center">
+      <EditorLayout>
+        <div className="flex min-h-screen items-center justify-center">
           <p className="text-muted-foreground">Loading resume…</p>
         </div>
-      </DashboardLayout>
+      </EditorLayout>
     );
   }
 
   if (loadError) {
     return (
-      <DashboardLayout>
+      <EditorLayout>
         <div className="p-6">
           <p className="text-destructive">{loadError}</p>
-          <Button asChild variant="outline" className="mt-4">
-            <Link to="/dashboard">Back to Dashboard</Link>
-          </Button>
         </div>
-      </DashboardLayout>
+      </EditorLayout>
     );
   }
 
   return (
-    <DashboardLayout>
-      <div className="flex h-[calc(100vh-4rem)] flex-col border-t border-border">
-        <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-1.5 bg-muted/20">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">
-              {saving ? (
-                <>
-                  <Loader2 className="inline h-3.5 w-3.5 animate-spin mr-1" aria-hidden />
-                  Saving…
-                </>
-              ) : (
-                <>
-                  <Check className="inline h-3.5 w-3.5 text-green-600 mr-1" aria-hidden />
-                  Saved
-                </>
-              )}
-            </span>
-          </div>
-        </div>
+    <EditorLayout>
+      <EditorTopbar
+        mode={activeTab}
+        onModeChange={setActiveTab}
+        previewZoom={previewZoom}
+        onPreviewZoomChange={setPreviewZoom}
+      />
+      <div className="flex min-h-0 flex-1 flex-shrink-0 overflow-hidden border-t border-border">
 
         <Dialog open={showRestoreModal} onOpenChange={(open) => !open && handleDiscard()}>
           <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
@@ -287,113 +273,56 @@ export default function EditorEditPage() {
           </DialogContent>
         </Dialog>
 
-        <Tabs defaultValue="basics" className="flex flex-1 min-h-0 flex-col">
-          <div ref={splitRef} className="flex flex-1 min-h-0">
-            {/* Left: Editor (sidebar + content) — resizable width */}
+        <Tabs
+          value={activeTab}
+          onValueChange={(val) => setActiveTab(val as EditorMode)}
+          className="flex flex-1 min-h-0 flex-col overflow-hidden"
+        >
+          <div ref={splitRef} className="flex flex-1 min-h-0 overflow-hidden">
+            {/* Left: Editor panel — white, scrollable, mode from topbar only */}
             <div
-              className="flex shrink-0 flex-col min-h-0"
+              className="flex shrink-0 flex-col min-h-0 overflow-hidden bg-[#fff] border-r border-gray-200"
               style={{ width: `${editorPanelWidthPercent}%`, minWidth: 320 }}
             >
-            {/* Tab triggers */}
-            <aside className="w-52 shrink-0 border-r border-border bg-muted/30 flex flex-col">
-              <div className="p-2 border-b border-border">
-                <Button variant="ghost" size="sm" asChild className="w-full justify-start gap-2">
-                  <Link to={`/dashboard/editor/${resumeId}`}>
-                    <ArrowLeft className="h-4 w-4" /> Back
-                  </Link>
-                </Button>
-              </div>
-              <TabsList className="w-full flex flex-col h-auto rounded-none border-b border-border bg-transparent p-0">
-                <TabsTrigger value="basics" className="w-full justify-start gap-2 rounded-none border-b border-border data-[state=active]:bg-background">
-                  <User className="h-4 w-4" /> Basics
-                </TabsTrigger>
-                <TabsTrigger value="content" className="w-full justify-start gap-2 rounded-none border-b border-border data-[state=active]:bg-background">
-                  <LayoutList className="h-4 w-4" /> Content
-                </TabsTrigger>
-                <TabsTrigger value="ai" className="w-full justify-start gap-2 rounded-none data-[state=active]:bg-background">
-                  <Sparkles className="h-4 w-4" /> AI
-                </TabsTrigger>
-              </TabsList>
-            </aside>
-
-            {/* Middle: Active tab content */}
-            <main className="flex-1 min-w-0 flex flex-col border-r border-border">
-              <ScrollArea className="flex-1 p-4">
+            <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+              <ScrollArea className="h-full min-h-0 flex-1 p-5">
                 <TabsContent value="basics" className="m-0">
                   <EditorBasicsPanel />
                 </TabsContent>
-                <TabsContent value="content" className="m-0">
-                  <EditorContentPanel />
-                </TabsContent>
                 <TabsContent value="ai" className="m-0">
-                  <EditorAIPanel />
+                  <AIChatPanel onClose={() => setActiveTab("basics")} />
                 </TabsContent>
               </ScrollArea>
             </main>
             </div>
 
-          {/* Resize handle */}
+          {/* Resize handle — increased spacing from left panel */}
           <div
             role="separator"
             aria-orientation="vertical"
             onMouseDown={handleSplitMouseDown}
-            className={`shrink-0 w-1.5 flex flex-col items-center cursor-col-resize border-l border-r border-border bg-muted/50 hover:bg-primary/20 transition-colors min-h-0 ${isDraggingSplit ? "bg-primary/30" : ""}`}
+            className={`shrink-0 w-1.5 flex flex-col items-center cursor-col-resize border-l border-r border-gray-200 bg-gray-100 min-h-0 transition-colors hover:bg-gray-200 ${isDraggingSplit ? "bg-gray-300" : ""}`}
             title="Drag to resize"
           >
-            <div className="w-1 h-12 rounded-full bg-muted-foreground/30 mt-4" />
+            <div className="mt-4 h-12 w-1 rounded-full bg-gray-300" />
           </div>
 
-          {/* Right: Preview panel — resizable */}
-          <aside className="flex-1 min-w-[320px] flex flex-col bg-muted/20 min-h-0">
-            <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2">
-              <span className="text-sm font-medium text-foreground">Preview</span>
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => setPreviewZoom((z) => Math.max(50, z - 10))}
+          {/* Right: Preview canvas — light gray background, framed card, no duplicate header */}
+          <aside className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#f6f7fb] min-w-[320px] pl-2">
+            <ScrollArea className="min-h-0 flex-1 p-4">
+              <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+                <div
+                  className="origin-top-left"
+                  style={{ transform: `scale(${previewZoom / 100})`, width: `${(100 / previewZoom) * 100}%` }}
                 >
-                  <ZoomOut className="h-4 w-4" />
-                </Button>
-                {([80, 100, 120] as const).map((z) => (
-                  <Button
-                    key={z}
-                    variant={previewZoom === z ? "secondary" : "ghost"}
-                    size="sm"
-                    className="h-8 min-w-8 px-2 text-xs"
-                    onClick={() => setPreviewZoom(z)}
-                  >
-                    {z}%
-                  </Button>
-                ))}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => setPreviewZoom((z) => Math.min(150, z + 10))}
-                >
-                  <ZoomIn className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-            {templateId && (
-              <div className="px-4 pb-1 text-xs text-muted-foreground truncate" title={templateId}>
-                Template: {templateId}
-              </div>
-            )}
-            <ScrollArea className="flex-1 p-4">
-              <div
-                className="origin-top-left"
-                style={{ transform: `scale(${previewZoom / 100})`, width: `${(100 / previewZoom) * 100}%` }}
-              >
-                <PreviewRenderer />
+                  <PreviewRenderer />
+                </div>
               </div>
             </ScrollArea>
           </aside>
           </div>
         </Tabs>
       </div>
-    </DashboardLayout>
+    </EditorLayout>
   );
 }

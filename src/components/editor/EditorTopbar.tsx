@@ -152,14 +152,18 @@ export function EditorTopbar({
             </button>
           </div>
           <div className="inline-flex items-center gap-1 rounded-full bg-gray-100 p-1">
-            <button
-              type="button"
-              className={`${segmentedBase} border-transparent bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow-md`}
+            <a
+              href={resumeId ? `/dashboard/editor/${resumeId}/preview` : "#"}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`${segmentedBase} border-transparent bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow-md no-underline hover:opacity-95 ${
+                !resumeId ? "pointer-events-none opacity-70" : ""
+              }`}
               aria-current="true"
             >
               <Globe className="h-3.5 w-3.5" />
               Preview
-            </button>
+            </a>
           </div>
         </div>
 

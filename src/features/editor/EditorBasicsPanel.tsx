@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useResumeDocStore } from "./resumeDocStore";
 import type { EditorTheme } from "./resumeDocStore";
 import { Label } from "@/components/ui/label";
@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, Trash2, ChevronDown } from "lucide-react";
+import { Plus, Minus, Trash2, ChevronDown, GripVertical } from "lucide-react";
 
 const STANDARD_KEYS = [
   "name",
@@ -38,6 +38,38 @@ function toKey(label: string): string {
 
 function blockTypeLabel(type: string): string {
   return type.charAt(0).toUpperCase() + type.slice(1).replace(/_/g, " ");
+}
+
+const DEGREE_TYPES = ["Bachelor's", "B.Tech", "B.E.", "Master's", "M.Tech", "M.E.", "MBA", "Diploma", "PhD", "Other"] as const;
+const DEGREE_DURATION_YEARS: Record<string, number> = {
+  "Bachelor's": 4, "B.Tech": 4, "B.E.": 4,
+  "Master's": 2, "M.Tech": 2, "M.E.": 2, "MBA": 2,
+  "Diploma": 2, "PhD": 5, "Other": 4,
+};
+
+function parseDatesToYears(dates: string | undefined): { fromYear: string; toYear: string } {
+  if (!dates || typeof dates !== "string") return { fromYear: "", toYear: "" };
+  const parts = dates.split(/\s*[-–—]\s*/).map((p) => p.trim());
+  return { fromYear: parts[0] ?? "", toYear: parts[1] ?? "" };
+}
+
+function getEducationItemFields(item: Record<string, unknown>) {
+  const { fromYear: fromDates, toYear: toDates } = parseDatesToYears(item.dates as string);
+  return {
+    name: (item.name as string) ?? (item.title as string) ?? "",
+    degreeType: (item.degreeType as string) ?? "",
+    degreeName: (item.degreeName as string) ?? (item.role as string) ?? "",
+    fromYear: (item.fromYear as string) ?? fromDates,
+    toYear: (item.toYear as string) ?? toDates,
+    text: (item.text as string) ?? (item.description as string) ?? "",
+  };
+}
+
+function educationItemToTemplate(item: Record<string, unknown>) {
+  const { name, degreeType, degreeName, fromYear, toYear, text } = getEducationItemFields(item);
+  const degree = [degreeType, degreeName].filter(Boolean).join(" ").trim() || undefined;
+  const dates = [fromYear, toYear].filter(Boolean).join(" – ") || undefined;
+  return { ...item, name: name || undefined, degree, dates, text: text || undefined, degreeType, degreeName, fromYear, toYear };
 }
 
 export function EditorBasicsPanel() {
@@ -67,128 +99,158 @@ export function EditorBasicsPanel() {
   };
 
   const inputClass =
-    "bg-white border border-[hsl(var(--border))] focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:border-[hsl(var(--ring))] placeholder:text-gray-400";
-  const labelClass = "text-sm font-medium text-gray-700";
-  const sectionHeadingClass = "font-semibold text-foreground text-sm mt-[10px] mb-[8px] first:mt-0";
-  const fieldGroupClass = "space-y-[6px]";
+    "rounded-xl bg-white border border-[hsl(var(--border))] focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:border-[hsl(var(--ring))] placeholder:text-gray-400 text-sm";
+  const labelClass = "text-xs font-medium text-gray-500";
+  const sectionTitleClass = "text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-3 first:mt-0";
+  const fieldGroupClass = "space-y-1";
   const [openBlocks, setOpenBlocks] = useState<Record<string, boolean>>({});
+  const [focusNewItemBlockId, setFocusNewItemBlockId] = useState<string | null>(null);
+  const newItemInputRef = useRef<HTMLInputElement>(null);
+  const [dragState, setDragState] = useState<{ blockId: string; fromIdx: number } | null>(null);
+  const [dropState, setDropState] = useState<{ blockId: string; toIdx: number; position: "before" | "after" } | null>(null);
+
+  useEffect(() => {
+    if (!focusNewItemBlockId) return;
+    const t = requestAnimationFrame(() => {
+      newItemInputRef.current?.focus();
+      setFocusNewItemBlockId(null);
+    });
+    return () => cancelAnimationFrame(t);
+  }, [focusNewItemBlockId]);
 
   return (
-    <div className="space-y-[16px]">
+    <div className="space-y-8">
       {templateId === "minimal-monochrome" && (
-        <div className="space-y-2 border-b border-[hsl(var(--border))] pb-4">
-          <h3 className={sectionHeadingClass}>Appearance</h3>
-          <Label className={labelClass}>Color theme</Label>
+        <div className="space-y-2 border-b border-[hsl(var(--border))] pb-6">
+          <h3 className={sectionTitleClass}>Appearance</h3>
           <select
             value={theme}
             onChange={(e) => setTheme(e.target.value as EditorTheme)}
-            className="flex h-9 w-full rounded-md border border-[hsl(var(--border))] bg-white px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
+            className="flex h-9 w-full rounded-xl border border-[hsl(var(--border))] bg-white px-3 py-1 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
           >
             <option value="dark">Dark (black)</option>
             <option value="light">Light</option>
           </select>
         </div>
       )}
-      <h3 className={sectionHeadingClass}>Contact & summary</h3>
-      <div className={fieldGroupClass}>
-        <Label className={labelClass}>Name</Label>
-        <Input
-          className={inputClass}
-          value={(basics.name as string) ?? ""}
-          onChange={(e) => set("name", e.target.value)}
-          placeholder="Full name"
-        />
-      </div>
-      <div className={fieldGroupClass}>
-        <Label className={labelClass}>Email</Label>
-        <Input
-          className={inputClass}
-          type="email"
-          value={(basics.email as string) ?? ""}
-          onChange={(e) => set("email", e.target.value)}
-          placeholder="you@example.com"
-        />
-      </div>
-      <div className={fieldGroupClass}>
-        <Label className={labelClass}>Phone</Label>
-        <Input
-          className={inputClass}
-          value={(basics.phone as string) ?? ""}
-          onChange={(e) => set("phone", e.target.value)}
-          placeholder="+1 234 567 8900"
-        />
-      </div>
-      <div className={fieldGroupClass}>
-        <Label className={labelClass}>Location</Label>
-        <Input
-          className={inputClass}
-          value={(basics.location as string) ?? ""}
-          onChange={(e) => set("location", e.target.value)}
-          placeholder="City, Country"
-        />
-      </div>
-      <div className={fieldGroupClass}>
-        <Label className={labelClass}>Headline</Label>
-        <Input
-          className={inputClass}
-          value={(basics.headline as string) ?? ""}
-          onChange={(e) => set("headline", e.target.value)}
-          placeholder="e.g. Senior Frontend Developer"
-        />
-      </div>
-      <div className={fieldGroupClass}>
-        <Label className={labelClass}>Summary</Label>
-        <Textarea
-          className={inputClass}
-          value={(basics.summary as string) ?? ""}
-          onChange={(e) => set("summary", e.target.value)}
-          placeholder="Brief professional summary"
-          rows={3}
-          className={"resize-none " + inputClass}
-        />
-      </div>
-      <div className={fieldGroupClass}>
-        <Label className={labelClass}>LinkedIn</Label>
-        <Input
-          className={inputClass}
-          value={(basics.linkedin as string) ?? ""}
-          onChange={(e) => set("linkedin", e.target.value)}
-          placeholder="https://linkedin.com/in/..."
-        />
-      </div>
-      <div className={fieldGroupClass}>
-        <Label className={labelClass}>GitHub</Label>
-        <Input
-          className={inputClass}
-          value={(basics.github as string) ?? ""}
-          onChange={(e) => set("github", e.target.value)}
-          placeholder="https://github.com/..."
-        />
-      </div>
-      <div className={fieldGroupClass}>
-        <Label className={labelClass}>Portfolio</Label>
-        <Input
-          className={inputClass}
-          value={(basics.portfolio as string) ?? ""}
-          onChange={(e) => set("portfolio", e.target.value)}
-          placeholder="https://..."
-        />
-      </div>
-      <div className={fieldGroupClass}>
-        <Label className={labelClass}>Hero image (optional)</Label>
-        <Input
-          className={inputClass}
-          value={(basics.heroImage as string) ?? ""}
-          onChange={(e) => set("heroImage", e.target.value)}
-          placeholder="URL to image or GIF for hero"
-        />
-        <p className="text-xs text-gray-500">Shown in the hero section. Use a square image or GIF for best results.</p>
-      </div>
 
-      {/* Full resume content (experience, projects, skills — from Gemini) */}
+      <section>
+        <h3 className={sectionTitleClass}>Contact</h3>
+        <div className="space-y-3">
+          <div className={fieldGroupClass}>
+            <Label className={labelClass}>Name</Label>
+            <Input
+              className={inputClass}
+              value={(basics.name as string) ?? ""}
+              onChange={(e) => set("name", e.target.value)}
+              placeholder="Full name"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className={fieldGroupClass}>
+              <Label className={labelClass}>Email</Label>
+              <Input
+                className={inputClass}
+                type="email"
+                value={(basics.email as string) ?? ""}
+                onChange={(e) => set("email", e.target.value)}
+                placeholder="you@example.com"
+              />
+            </div>
+            <div className={fieldGroupClass}>
+              <Label className={labelClass}>Phone</Label>
+              <Input
+                className={inputClass}
+                value={(basics.phone as string) ?? ""}
+                onChange={(e) => set("phone", e.target.value)}
+                placeholder="+1 234 567 8900"
+              />
+            </div>
+          </div>
+          <div className={fieldGroupClass}>
+            <Label className={labelClass}>Location</Label>
+            <Input
+              className={inputClass}
+              value={(basics.location as string) ?? ""}
+              onChange={(e) => set("location", e.target.value)}
+              placeholder="City, Country"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h3 className={sectionTitleClass}>About</h3>
+        <div className="space-y-3">
+          <div className={fieldGroupClass}>
+            <Label className={labelClass}>Headline</Label>
+            <Input
+              className={inputClass}
+              value={(basics.headline as string) ?? ""}
+              onChange={(e) => set("headline", e.target.value)}
+              placeholder="e.g. Senior Frontend Developer"
+            />
+          </div>
+          <div className={fieldGroupClass}>
+            <Label className={labelClass}>Summary</Label>
+            <Textarea
+              className={inputClass + " resize-none"}
+              value={(basics.summary as string) ?? ""}
+              onChange={(e) => set("summary", e.target.value)}
+              placeholder="Brief professional summary"
+              rows={3}
+            />
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h3 className={sectionTitleClass}>Links</h3>
+        <div className="space-y-3">
+          <div className={fieldGroupClass}>
+            <Label className={labelClass}>LinkedIn</Label>
+            <Input
+              className={inputClass}
+              value={(basics.linkedin as string) ?? ""}
+              onChange={(e) => set("linkedin", e.target.value)}
+              placeholder="linkedin.com/in/..."
+            />
+          </div>
+          <div className={fieldGroupClass}>
+            <Label className={labelClass}>GitHub</Label>
+            <Input
+              className={inputClass}
+              value={(basics.github as string) ?? ""}
+              onChange={(e) => set("github", e.target.value)}
+              placeholder="github.com/..."
+            />
+          </div>
+          <div className={fieldGroupClass}>
+            <Label className={labelClass}>Portfolio</Label>
+            <Input
+              className={inputClass}
+              value={(basics.portfolio as string) ?? ""}
+              onChange={(e) => set("portfolio", e.target.value)}
+              placeholder="your-site.com"
+            />
+          </div>
+          <div className={fieldGroupClass}>
+            <Label className={labelClass}>Hero image</Label>
+            <Input
+              className={inputClass}
+              value={(basics.heroImage as string) ?? ""}
+              onChange={(e) => set("heroImage", e.target.value)}
+              placeholder="Image URL (optional)"
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Resume content blocks (experience, projects, skills) */}
       {blocks.length > 0 && (
-        <>
-          <h3 className={sectionHeadingClass}>Resume content (experience, projects, skills)</h3>
+        <section>
+          <h3 className={sectionTitleClass}>Resume content</h3>
+          <div className="space-y-3">
           {blocks.map((block, blockIndex) => {
             const title =
               (block.content?.title as string) ||
@@ -201,52 +263,72 @@ export function EditorBasicsPanel() {
             const blockId = block.id ?? `block-${blockIndex}`;
             const isOpen = openBlocks[blockId] ?? true;
 
+            const addBlankItem = (e: React.MouseEvent) => {
+              e.stopPropagation();
+              if (!block.id) return;
+              const blankItem: Record<string, unknown> =
+                block.type === "education"
+                  ? { name: "", degreeType: "", degreeName: "", fromYear: "", toYear: "", text: "" }
+                  : { title: "", subtitle: "", text: "" };
+              if (Array.isArray(block.content?.items)) {
+                const currentItems = block.content.items as Record<string, unknown>[];
+                updateBlock(block.id, {
+                  content: { ...block.content, items: [blankItem, ...currentItems] },
+                });
+              } else {
+                const existingText = block.content?.text ? [{ text: block.content.text as string }] : [];
+                updateBlock(block.id, {
+                  content: { ...block.content, items: [blankItem, ...existingText], text: undefined },
+                });
+              }
+              setFocusNewItemBlockId(block.id);
+            };
+
             return (
               <div
                 key={blockId}
-                className="rounded-lg border border-[hsl(var(--border))] bg-gray-50/50 p-3 space-y-3"
+                className="rounded-xl border border-[hsl(var(--border))] bg-gray-50/50 p-3 space-y-3"
               >
-                <button
-                  type="button"
-                  className="flex w-full items-center justify-between gap-2 text-left"
-                  onClick={() =>
-                    setOpenBlocks((prev) => ({ ...prev, [blockId]: !isOpen }))
-                  }
-                >
-                  <div className="flex flex-col">
-                    <span className="text-sm font-medium text-foreground">
-                      {title}
-                    </span>
-                    {items.length > 0 && (
-                      <span className="text-xs text-gray-500">
-                        {items.length} item{items.length !== 1 ? "s" : ""}
-                      </span>
-                    )}
-                  </div>
-                  <ChevronDown
-                    className={
-                      "h-4 w-4 text-gray-500 transition-transform " +
-                      (isOpen ? "rotate-180" : "")
+                <div className="flex w-full items-center gap-2">
+                  <button
+                    type="button"
+                    className="flex min-w-0 flex-1 items-center justify-between gap-2 text-left"
+                    onClick={() =>
+                      setOpenBlocks((prev) => ({ ...prev, [blockId]: !isOpen }))
                     }
-                  />
-                </button>
-
-                {isOpen && (
-                  <div className="space-y-3 pt-3">
-                    <div className={fieldGroupClass}>
-                      <Label className={labelClass}>Section title</Label>
-                      <Input
-                        className={inputClass}
-                        value={title}
-                        onChange={(e) =>
-                          block.id &&
-                          updateBlock(block.id, {
-                            content: { ...block.content, title: e.target.value },
-                          })
+                  >
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="truncate text-sm font-medium text-foreground">
+                        {title}
+                      </span>
+                      {items.length > 0 && (
+                        <span className="text-[11px] text-gray-400 shrink-0">
+                          {items.length} item{items.length !== 1 ? "s" : ""}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={addBlankItem}
+                        className="p-1 text-green-600 transition-colors hover:text-green-700"
+                        title="Add item"
+                        aria-label="Add item to section"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </button>
+                      <ChevronDown
+                        className={
+                          "h-4 w-4 text-gray-500 transition-transform " +
+                          (isOpen ? "rotate-180" : "")
                         }
-                        placeholder={blockTypeLabel(block.type)}
                       />
                     </div>
+                  </button>
+                </div>
+
+                {isOpen && (
+                  <div className="space-y-3 pt-3 border-t border-[hsl(var(--border))] mt-3">
                     {items.length > 0 ? (
                       <ul className="space-y-3">
                     {items.map((item, idx) => {
@@ -254,6 +336,8 @@ export function EditorBasicsPanel() {
                         typeof item === "object" && item !== null
                           ? (item as Record<string, unknown>)
                           : { text: String(item) };
+                      const isEducation = block.type === "education";
+                      const educationFields = isEducation ? getEducationItemFields(itemObj) : null;
                       const itemTitle =
                         (itemObj.title as string) ??
                         (itemObj.role as string) ??
@@ -269,11 +353,208 @@ export function EditorBasicsPanel() {
                         (itemObj.text as string) ??
                         (itemObj.description as string) ??
                         "";
+                      const removeItem = () => {
+                        if (!block.id) return;
+                        const next = items.filter((_, i) => i !== idx);
+                        updateBlock(block.id, {
+                          content: { ...block.content, items: next.length > 0 ? next : [] },
+                        });
+                      };
+
+                      const isDragging = dragState?.blockId === block.id && dragState.fromIdx === idx;
+                      const isDropBefore = dropState?.blockId === block.id && dropState.toIdx === idx && dropState.position === "before";
+                      const isDropAfter = dropState?.blockId === block.id && dropState.toIdx === idx && dropState.position === "after";
+
+                      const handleDragStart = (e: React.DragEvent) => {
+                        const target = e.target as HTMLElement;
+                        if (target.closest("input, textarea, select")) { e.preventDefault(); return; }
+                        e.dataTransfer.setData("application/json", JSON.stringify({ blockId: block.id, itemIndex: idx }));
+                        e.dataTransfer.effectAllowed = "move";
+                        setDragState({ blockId: block.id!, fromIdx: idx });
+                      };
+                      const handleDragOver = (e: React.DragEvent) => {
+                        e.preventDefault();
+                        if (!dragState || dragState.blockId !== block.id) return;
+                        e.dataTransfer.dropEffect = "move";
+                        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                        const midY = rect.top + rect.height / 2;
+                        const position = e.clientY < midY ? "before" : "after";
+                        setDropState({ blockId: block.id!, toIdx: idx, position });
+                      };
+                      const handleDragLeave = (e: React.DragEvent) => {
+                        if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) {
+                          setDropState(null);
+                        }
+                      };
+                      const handleDrop = (e: React.DragEvent) => {
+                        e.preventDefault();
+                        if (!block.id) return;
+                        const raw = e.dataTransfer.getData("application/json");
+                        if (!raw) return;
+                        const { blockId, itemIndex: fromIndex } = JSON.parse(raw) as { blockId: string; itemIndex: number };
+                        if (blockId !== block.id) return;
+                        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                        const midY = rect.top + rect.height / 2;
+                        const insertAfter = e.clientY >= midY;
+                        let toIndex = insertAfter ? idx + 1 : idx;
+                        if (fromIndex < toIndex) toIndex -= 1;
+                        if (fromIndex !== toIndex) {
+                          const newItems = [...items];
+                          const [removed] = newItems.splice(fromIndex, 1);
+                          newItems.splice(toIndex, 0, removed);
+                          updateBlock(block.id, { content: { ...block.content, items: newItems } });
+                        }
+                        setDragState(null);
+                        setDropState(null);
+                      };
+                      const handleDragEnd = () => {
+                        setDragState(null);
+                        setDropState(null);
+                      };
+
                       return (
-                        <li key={idx} className="rounded border border-[hsl(var(--border))] bg-white p-3 space-y-2">
+                        <li key={idx} className="relative">
+                          {isDropBefore && (
+                            <div className="absolute -top-[2px] left-0 right-0 h-[3px] rounded-full bg-[hsl(var(--ring))] z-10 pointer-events-none" />
+                          )}
+                        <div
+                          draggable
+                          onDragStart={handleDragStart}
+                          onDragOver={handleDragOver}
+                          onDragLeave={handleDragLeave}
+                          onDrop={handleDrop}
+                          onDragEnd={handleDragEnd}
+                          style={{ transition: "opacity 150ms, transform 150ms, box-shadow 150ms" }}
+                          className={[
+                            "flex gap-2 rounded-xl border border-[hsl(var(--border))] bg-white p-3",
+                            isDragging ? "opacity-40 scale-[0.98] shadow-lg cursor-grabbing" : "cursor-grab",
+                            !isDragging && dragState?.blockId === block.id ? "cursor-copy" : "",
+                          ].join(" ")}
+                        >
+                          <div className="shrink-0 self-center text-gray-400" title="Drag to reorder">
+                            <GripVertical className="h-4 w-4" />
+                          </div>
+                          <div className="min-w-0 flex-1 space-y-2">
+                          {isEducation && educationFields ? (
+                            <>
+                              <div className={fieldGroupClass}>
+                                <Label className={labelClass}>Institution</Label>
+                                <Input
+                                  ref={focusNewItemBlockId === block.id && idx === 0 ? newItemInputRef : undefined}
+                                  className={inputClass}
+                                  value={educationFields.name}
+                                  onChange={(e) => {
+                                    if (!block.id) return;
+                                    const next = [...items];
+                                    const updated = { ...itemObj, name: e.target.value };
+                                    next[idx] = educationItemToTemplate(updated);
+                                    updateBlock(block.id, { content: { ...block.content, items: next } });
+                                  }}
+                                  placeholder="e.g. University name"
+                                />
+                              </div>
+                              <div className={fieldGroupClass}>
+                                <Label className={labelClass}>Degree type</Label>
+                                <select
+                                  className={inputClass + " w-full h-10 px-3 py-2 appearance-none"}
+                                  value={educationFields.degreeType || ""}
+                                  onChange={(e) => {
+                                    if (!block.id) return;
+                                    const next = [...items];
+                                    const val = e.target.value;
+                                    const updated = { ...itemObj, degreeType: val };
+                                    const fromY = (itemObj.fromYear as string) || "";
+                                    const toY = (itemObj.toYear as string) || "";
+                                    if (fromY && !toY && val) {
+                                      const years = DEGREE_DURATION_YEARS[val] ?? 4;
+                                      const end = parseInt(fromY, 10) + years;
+                                      if (!isNaN(end)) updated.toYear = String(end);
+                                    }
+                                    next[idx] = educationItemToTemplate(updated);
+                                    updateBlock(block.id, { content: { ...block.content, items: next } });
+                                  }}
+                                >
+                                  <option value="">Select</option>
+                                  {DEGREE_TYPES.map((t) => (
+                                    <option key={t} value={t}>{t}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div className={fieldGroupClass}>
+                                <Label className={labelClass}>Degree name</Label>
+                                <Input
+                                  className={inputClass}
+                                  value={educationFields.degreeName}
+                                  onChange={(e) => {
+                                    if (!block.id) return;
+                                    const next = [...items];
+                                    next[idx] = educationItemToTemplate({ ...itemObj, degreeName: e.target.value });
+                                    updateBlock(block.id, { content: { ...block.content, items: next } });
+                                  }}
+                                  placeholder="e.g. Computer Science and Engineering"
+                                />
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                <div className={fieldGroupClass}>
+                                  <Label className={labelClass}>From year</Label>
+                                  <Input
+                                    className={inputClass}
+                                    value={educationFields.fromYear}
+                                    onChange={(e) => {
+                                      if (!block.id) return;
+                                      const next = [...items];
+                                      const val = e.target.value;
+                                      const updated = { ...itemObj, fromYear: val };
+                                      const toY = (itemObj.toYear as string) || "";
+                                      const degType = (itemObj.degreeType as string) || "";
+                                      if (val && !toY && degType) {
+                                        const years = DEGREE_DURATION_YEARS[degType] ?? 4;
+                                        const end = parseInt(val, 10) + years;
+                                        if (!isNaN(end)) updated.toYear = String(end);
+                                      }
+                                      next[idx] = educationItemToTemplate(updated);
+                                      updateBlock(block.id, { content: { ...block.content, items: next } });
+                                    }}
+                                    placeholder="e.g. 2020"
+                                  />
+                                </div>
+                                <div className={fieldGroupClass}>
+                                  <Label className={labelClass}>To year</Label>
+                                  <Input
+                                    className={inputClass}
+                                    value={educationFields.toYear}
+                                    onChange={(e) => {
+                                      if (!block.id) return;
+                                      const next = [...items];
+                                      next[idx] = educationItemToTemplate({ ...itemObj, toYear: e.target.value });
+                                      updateBlock(block.id, { content: { ...block.content, items: next } });
+                                    }}
+                                    placeholder="e.g. 2024"
+                                  />
+                                </div>
+                              </div>
+                              <div className={fieldGroupClass}>
+                                <Label className={labelClass}>Description</Label>
+                                <Textarea
+                                  className={inputClass + " resize-none"}
+                                  rows={2}
+                                  value={educationFields.text}
+                                  onChange={(e) => {
+                                    if (!block.id) return;
+                                    const next = [...items];
+                                    next[idx] = educationItemToTemplate({ ...itemObj, text: e.target.value });
+                                    updateBlock(block.id, { content: { ...block.content, items: next } });
+                                  }}
+                                  placeholder="Bullets or paragraph"
+                                />
+                              </div>
+                            </>
+                          ) : (
+                            <>
                           <div className={fieldGroupClass}>
-                            <Label className={labelClass}>Title</Label>
+                            <Label className={labelClass}>Role / Title</Label>
                             <Input
+                              ref={!isEducation && focusNewItemBlockId === block.id && idx === 0 ? newItemInputRef : undefined}
                               className={inputClass}
                               value={itemTitle}
                               onChange={(e) => {
@@ -287,7 +568,7 @@ export function EditorBasicsPanel() {
                           </div>
                           {block.type !== "skills" && (
                             <div className={fieldGroupClass}>
-                              <Label className={labelClass}>Subtitle / date</Label>
+                              <Label className={labelClass}>Company / Date</Label>
                               <Input
                                 className={inputClass}
                                 value={itemSubtitle}
@@ -316,39 +597,44 @@ export function EditorBasicsPanel() {
                               placeholder="Bullets or paragraph"
                             />
                           </div>
+                            </>
+                          )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={removeItem}
+                            className="shrink-0 self-start p-1 text-red-500 transition-colors hover:text-red-600"
+                            title="Remove this item"
+                            aria-label="Remove item"
+                          >
+                            <Minus className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                          {isDropAfter && (
+                            <div className="absolute -bottom-[2px] left-0 right-0 h-[3px] rounded-full bg-[hsl(var(--ring))] z-10 pointer-events-none" />
+                          )}
                         </li>
                       );
                     })}
                   </ul>
-                ) : (
-                  <div className={fieldGroupClass}>
-                    <Label className={labelClass}>Content</Label>
-                    <Textarea
-                      className={inputClass + " resize-none"}
-                      rows={2}
-                      value={(block.content?.text as string) ?? ""}
-                      onChange={(e) =>
-                        block.id &&
-                        updateBlock(block.id, {
-                          content: { ...block.content, text: e.target.value },
-                        })
-                      }
-                      placeholder="Add content for this section"
-                    />
-                  </div>
-                )}
+                ) : null}
                   </div>
                 )}
               </div>
             );
           })}
-        </>
+          </div>
+        </section>
       )}
 
       {/* Custom sections (extra basics fields) */}
+      {customKeys.length > 0 && (
+        <section>
+          <h3 className={sectionTitleClass}>Custom</h3>
+          <div className="space-y-3">
       {customKeys.map((key) => (
         <div key={key} className="flex items-end gap-2">
-          <div className="flex-1 space-y-[6px]">
+          <div className="flex-1 space-y-1">
             <Label className={labelClass + " capitalize"}>{key.replace(/_/g, " ")}</Label>
             <Input
               className={inputClass}
@@ -369,18 +655,21 @@ export function EditorBasicsPanel() {
           </Button>
         </div>
       ))}
+          </div>
+        </section>
+      )}
 
       {/* Add section button */}
-      <div className="border-t border-[hsl(var(--border))] pt-4">
+      <div className="border-t border-[hsl(var(--border))] pt-6">
         <Button
           type="button"
-          variant="outline"
+          variant="ghost"
           size="sm"
-          className="gap-2"
+          className="gap-2 text-xs text-gray-500 hover:text-gray-700"
           onClick={() => setAddSectionOpen(true)}
         >
-          <Plus className="h-4 w-4" />
-          Add section
+          <Plus className="h-3.5 w-3.5" />
+          Add custom field
         </Button>
       </div>
 

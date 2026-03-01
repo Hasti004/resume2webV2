@@ -65,13 +65,14 @@ export function TemplateCinematic({ basics, blocks }: TemplateCinematicProps) {
   const professionLabel = headline ? String(headline).slice(0, 60) : "Professional";
 
   return (
-    <div className="cinematic-portfolio min-h-screen bg-[#050508] text-white font-sans antialiased overflow-x-hidden">
-      {/* Minimal nav */}
-      <nav className="cinematic-nav fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 sm:px-12 py-5 backdrop-blur-md bg-[#050508]/70 border-b border-white/5">
-        <a href="#" className="text-sm font-semibold tracking-wide text-white/90">
+    <div className="cinematic-portfolio min-h-screen min-w-0 bg-[#050508] text-white font-sans antialiased overflow-x-hidden">
+      {/* Minimal nav — Home, Work, About, Contact always visible; compact so they fit in preview */}
+      <nav className="cinematic-nav fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 sm:px-8 md:px-12 py-4 backdrop-blur-md bg-[#050508]/70 border-b border-white/5 min-w-0">
+        <a href="#" className="text-sm font-semibold tracking-wide text-white/90 shrink-0">
           {name.split(" ")[0]}
         </a>
-        <div className="flex gap-8 text-sm">
+        <div className="flex items-center gap-4 sm:gap-6 text-xs sm:text-sm shrink-0">
+          <a href="#" className="text-white/60 transition-colors hover:text-white">Home</a>
           {projectItems.length > 0 && (
             <a href="#work" className="text-white/60 transition-colors hover:text-white">Work</a>
           )}
@@ -85,7 +86,7 @@ export function TemplateCinematic({ basics, blocks }: TemplateCinematicProps) {
         ref={heroRef}
         onMouseMove={onHeroMouseMove}
         onMouseLeave={onHeroMouseLeave}
-        className="cinematic-hero relative min-h-screen flex flex-col justify-center px-6 py-24 sm:px-12"
+        className="cinematic-hero relative min-h-screen flex flex-col justify-center px-6 py-24 sm:px-10 md:px-12"
       >
         <div className="cinematic-hero-bg absolute inset-0 overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a12] via-[#0d0d18] to-[#050508]" />
@@ -115,9 +116,9 @@ export function TemplateCinematic({ basics, blocks }: TemplateCinematicProps) {
           />
         </div>
 
-        <div className="cinematic-hero-content relative z-10 max-w-5xl">
+        <div className="cinematic-hero-content relative z-10 max-w-5xl min-w-0 w-full">
           <p
-            className="cinematic-reveal text-sm font-medium tracking-[0.3em] uppercase text-white/60 mb-6"
+            className="cinematic-reveal text-sm font-medium tracking-[0.3em] uppercase text-white/60 mb-6 break-words"
             style={{ animation: "cinematic-fade-up 0.8s ease-out 0.2s forwards", opacity: 0 }}
           >
             {professionLabel}

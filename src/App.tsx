@@ -19,6 +19,7 @@ import DashboardEditorPage from "./pages/DashboardEditorPage";
 import TemplateSelection from "./pages/TemplateSelection";
 import TemplatesRedirect from "./pages/TemplatesRedirect";
 import EditorEditPage from "./pages/EditorEditPage";
+import EditorPreviewPage from "./pages/EditorPreviewPage";
 import PublishSite from "./pages/PublishSite";
 import SyncAccounts from "./pages/SyncAccounts";
 import Upgrade from "./pages/Upgrade";
@@ -54,6 +55,7 @@ const App = () => (
           <Route path="/dashboard/editor/:resumeId" element={<DashboardEditorPage />} />
           <Route path="/dashboard/editor/:resumeId/structured" element={<ViewStructuredResume />} />
           <Route path="/dashboard/editor/:resumeId/edit" element={<EditorEditPage />} />
+          <Route path="/dashboard/editor/:resumeId/preview" element={<EditorPreviewPage />} />
           <Route path="/dashboard/editor/:resumeId/template" element={<TemplateSelection />} />
           <Route path="/dashboard/templates" element={<TemplatesRedirect />} />
           <Route path="/dashboard/publish" element={<PublishSite />} />

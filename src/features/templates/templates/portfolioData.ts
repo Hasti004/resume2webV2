@@ -43,8 +43,8 @@ export function isExperienceItem(item: unknown): item is { role?: string; compan
   return typeof item === "object" && item !== null && "role" in item;
 }
 
-export function isEducationItem(item: unknown): item is { name?: string; degree?: string; dates?: string } {
-  return typeof item === "object" && item !== null && "name" in item && !("role" in item);
+export function isEducationItem(item: unknown): item is { name?: string; degree?: string; dates?: string; degreeType?: string; degreeName?: string; fromYear?: string; toYear?: string } {
+  return typeof item === "object" && item !== null && !("role" in item);
 }
 
 export function isProjectItem(item: unknown): item is { name?: string; description?: string; url?: string } {

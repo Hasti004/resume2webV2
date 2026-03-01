@@ -86,34 +86,32 @@ export default function EditorEditPage() {
   const getState = useResumeDocStore.getState;
   const templateId = useResumeDocStore((s) => s.templateId);
   const [previewZoom, setPreviewZoom] = useState(100);
-  const [editorPanelWidthPercent, setEditorPanelWidthPercent] = useState(42);
-  const [isDraggingSplit, setIsDraggingSplit] = useState(false);
   const [activeTab, setActiveTab] = useState<EditorMode>("basics");
-  const splitRef = useRef<HTMLDivElement>(null);
+  const [previewContainerWidth, setPreviewContainerWidth] = useState(0);
+  const previewContainerRef = useRef<HTMLDivElement>(null);
 
-  const handleSplitMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsDraggingSplit(true);
+  /** Fixed left panel width (Lovable-style); preview takes remaining width. */
+  const EDITOR_LEFT_WIDTH_PX = 520;
+
+  /** Fit preview to view (Lovable-style): render at fixed design width and scale to fit container. */
+  const PREVIEW_DESIGN_WIDTH = 1200;
+  const PREVIEW_PADDING_X = 56; /* pl-4 (16) + pr-5 (20) + mr-5 (20) for right gap */
+  useEffect(() => {
+    const el = previewContainerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      setPreviewContainerWidth(el.clientWidth);
+    });
+    ro.observe(el);
+    setPreviewContainerWidth(el.clientWidth);
+    return () => ro.disconnect();
   }, []);
 
-  useEffect(() => {
-    if (!isDraggingSplit) return;
-    const onMove = (e: MouseEvent) => {
-      const container = splitRef.current?.closest(".flex.min-h-0");
-      if (!container) return;
-      const rect = container.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const pct = Math.round((x / rect.width) * 100);
-      setEditorPanelWidthPercent(Math.min(70, Math.max(28, pct)));
-    };
-    const onUp = () => setIsDraggingSplit(false);
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-    return () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    };
-  }, [isDraggingSplit]);
+  const fitScale =
+    previewContainerWidth > 0
+      ? (previewContainerWidth - PREVIEW_PADDING_X) / PREVIEW_DESIGN_WIDTH
+      : 1;
+  const previewScale = fitScale * (previewZoom / 100);
 
   useEffect(() => {
     if (!resumeId) return;
@@ -278,48 +276,51 @@ export default function EditorEditPage() {
           onValueChange={(val) => setActiveTab(val as EditorMode)}
           className="flex flex-1 min-h-0 flex-col overflow-hidden"
         >
-          <div ref={splitRef} className="flex flex-1 min-h-0 overflow-hidden">
-            {/* Left: Editor panel — white, scrollable, mode from topbar only */}
-            <div
-              className="flex shrink-0 flex-col min-h-0 overflow-hidden bg-[#fff] border-r border-gray-200"
-              style={{ width: `${editorPanelWidthPercent}%`, minWidth: 320 }}
+          <div className="flex flex-1 min-h-0 overflow-hidden">
+            {/* Left: Basic info panel — fixed width (Lovable-style) */}
+            <aside
+              className="flex shrink-0 flex-col min-h-0 overflow-hidden border-r border-gray-200 bg-white"
+              style={{ width: EDITOR_LEFT_WIDTH_PX }}
             >
-            <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-              <ScrollArea className="h-full min-h-0 flex-1 p-5">
-                <TabsContent value="basics" className="m-0">
-                  <EditorBasicsPanel />
-                </TabsContent>
-                <TabsContent value="ai" className="m-0">
-                  <AIChatPanel onClose={() => setActiveTab("basics")} />
-                </TabsContent>
-              </ScrollArea>
-            </main>
-            </div>
+              <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+                <ScrollArea className="h-full min-h-0 flex-1 p-5">
+                  <TabsContent value="basics" className="m-0">
+                    <EditorBasicsPanel />
+                  </TabsContent>
+                  <TabsContent value="ai" className="m-0">
+                    <AIChatPanel onClose={() => setActiveTab("basics")} />
+                  </TabsContent>
+                </ScrollArea>
+              </main>
+            </aside>
 
-          {/* Resize handle — increased spacing from left panel */}
-          <div
-            role="separator"
-            aria-orientation="vertical"
-            onMouseDown={handleSplitMouseDown}
-            className={`shrink-0 w-1.5 flex flex-col items-center cursor-col-resize border-l border-r border-gray-200 bg-gray-100 min-h-0 transition-colors hover:bg-gray-200 ${isDraggingSplit ? "bg-gray-300" : ""}`}
-            title="Drag to resize"
-          >
-            <div className="mt-4 h-12 w-1 rounded-full bg-gray-300" />
-          </div>
-
-          {/* Right: Preview canvas — light gray background, framed card, no duplicate header */}
-          <aside className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#f6f7fb] min-w-[320px] pl-2">
-            <ScrollArea className="min-h-0 flex-1 p-4">
-              <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-                <div
-                  className="origin-top-left"
-                  style={{ transform: `scale(${previewZoom / 100})`, width: `${(100 / previewZoom) * 100}%` }}
-                >
-                  <PreviewRenderer />
+            {/* Right: Preview — seamless fit (Lovable-style): uniform margin, single canvas */}
+            <aside
+              ref={previewContainerRef}
+              className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#eef0f4]"
+            >
+              <ScrollArea className="min-h-0 flex-1">
+                <div className="box-border min-h-full w-full shrink-0 pl-4 pr-5 py-4 flex justify-center items-start">
+                  <div
+                    className="shrink-0 overflow-x-hidden overflow-y-visible rounded-lg shadow-sm mr-5"
+                    style={{
+                      width: Math.round(PREVIEW_DESIGN_WIDTH * previewScale),
+                      maxWidth: "100%",
+                    }}
+                  >
+                    <div
+                      className="origin-top-left rounded-lg overflow-hidden"
+                      style={{
+                        width: PREVIEW_DESIGN_WIDTH,
+                        transform: `scale(${previewScale})`,
+                      }}
+                    >
+                      <PreviewRenderer />
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </ScrollArea>
-          </aside>
+              </ScrollArea>
+            </aside>
           </div>
         </Tabs>
       </div>

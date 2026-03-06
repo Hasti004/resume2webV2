@@ -114,7 +114,6 @@ export default function ViewStructuredResume() {
 
   const basics = structured.basics ?? {};
   const blocks = structured.blocks ?? [];
-  const name = [basics.name, basics.email, basics.phone, basics.location].filter(Boolean).join(" · ");
 
   return (
     <DashboardLayout>
@@ -136,12 +135,12 @@ export default function ViewStructuredResume() {
               </div>
             </CardHeader>
             <CardContent className="space-y-1 text-sm">
-              {basics.name && <p className="font-medium text-foreground">{String(basics.name)}</p>}
-              {basics.headline && <p className="text-muted-foreground">{String(basics.headline)}</p>}
-              {basics.email && <p className="text-muted-foreground">{String(basics.email)}</p>}
-              {basics.phone && <p className="text-muted-foreground">{String(basics.phone)}</p>}
-              {basics.location && <p className="text-muted-foreground">{String(basics.location)}</p>}
-              {basics.summary && <p className="mt-2 text-muted-foreground whitespace-pre-wrap">{String(basics.summary)}</p>}
+              {basics.name != null && basics.name !== "" && <p className="font-medium text-foreground">{String(basics.name)}</p>}
+              {basics.headline != null && basics.headline !== "" && <p className="text-muted-foreground">{String(basics.headline)}</p>}
+              {basics.email != null && basics.email !== "" && <p className="text-muted-foreground">{String(basics.email)}</p>}
+              {basics.phone != null && basics.phone !== "" && <p className="text-muted-foreground">{String(basics.phone)}</p>}
+              {basics.location != null && basics.location !== "" && <p className="text-muted-foreground">{String(basics.location)}</p>}
+              {basics.summary != null && basics.summary !== "" && <p className="mt-2 text-muted-foreground whitespace-pre-wrap">{String(basics.summary)}</p>}
             </CardContent>
           </Card>
 

@@ -8,6 +8,20 @@ export interface TemplatePreview {
   value: string; // CSS gradient string or image URL
 }
 
+/** A field the template needs that isn't in a standard resume */
+export interface TemplateExtraField {
+  /** Key stored in basics (e.g. "birthYear") */
+  key: string;
+  /** Human-readable label shown in the Basics panel */
+  label: string;
+  /** Input placeholder */
+  placeholder: string;
+  /** Short description shown below the field */
+  description: string;
+  /** Input type: text | number | url */
+  type?: "text" | "number" | "url";
+}
+
 export interface TemplateManifest {
   id: string;
   name: string;
@@ -19,10 +33,12 @@ export interface TemplateManifest {
   supportedBlocks: string[];
   sectionOrder: string[];
   preview: TemplatePreview;
+  /** Extra basics fields this template requires beyond a standard resume */
+  extraBasicsFields?: TemplateExtraField[];
 }
 
 /** Category chips for filter (include "All" as special) */
-export const TEMPLATE_CATEGORIES = ["All", "Professional", "Creative"] as const;
+export const TEMPLATE_CATEGORIES = ["All", "Professional", "Creative", "Artist"] as const;
 
 const DEFAULT_SECTION_ORDER = [
   "summary",
@@ -66,5 +82,104 @@ export const TEMPLATE_MANIFESTS: TemplateManifest[] = [
     supportedBlocks: ["custom", "summary", "experience", "projects", "education", "skills", "certifications", "awards"],
     sectionOrder: ["summary", "experience", "projects", "skills", "education", "additional"],
     preview: { kind: "gradient", value: "linear-gradient(160deg, #0a0a0f 0%, #1a0a2e 40%, #16213e 70%, #0f3460 100%)" },
+  },
+  {
+    id: "artistry",
+    name: "Artistry",
+    description: "Fine-art gallery portfolio with floating artwork frames, crimson-and-gold palette, Playfair Display typography, and an elegant works timeline. Perfect for artists, photographers, and creatives.",
+    styleTag: "Artist",
+    categoryTags: ["All", "Creative", "Artist"],
+    personaTags: ["artist", "photographer", "designer", "creative"],
+    supportedBlocks: ["custom", "summary", "experience", "projects", "education", "skills"],
+    sectionOrder: ["experience", "projects", "education", "skills"],
+    preview: { kind: "gradient", value: "linear-gradient(160deg, hsl(20,30%,10%) 0%, hsl(30,25%,18%) 45%, hsl(4,60%,28%) 100%)" },
+    extraBasicsFields: [
+      {
+        key: "birthYear",
+        label: "Birth year",
+        placeholder: "e.g. 1998",
+        description: "Shown as 'Since [year]' — represents when your artistic journey began.",
+        type: "number",
+      },
+      {
+        key: "introLine",
+        label: "Intro line",
+        placeholder: "The Portfolio of",
+        description: "Small line above your name on the hero (e.g. 'The Portfolio of').",
+        type: "text",
+      },
+      {
+        key: "tagline",
+        label: "Tagline",
+        placeholder: "Painter · Sculptor · Visionary",
+        description: "Short descriptor shown below your name on the hero.",
+        type: "text",
+      },
+      {
+        key: "studioName",
+        label: "Studio name",
+        placeholder: "Heritage Art Studio",
+        description: "Shown as a vertical side label on the hero section.",
+        type: "text",
+      },
+      {
+        key: "artistQuote",
+        label: "Your quote",
+        placeholder: "Art is not what you see, but what you make others see.",
+        description: "A personal quote shown in the Works section.",
+        type: "text",
+      },
+      {
+        key: "heroBgImage",
+        label: "Hero background image URL",
+        placeholder: "https://…",
+        description: "Full-page background image for the hero section. Paste a direct image URL.",
+        type: "url",
+      },
+      {
+        key: "instagram",
+        label: "Instagram",
+        placeholder: "https://instagram.com/yourhandle",
+        description: "Shown in the Contact page of your portfolio.",
+        type: "url",
+      },
+      {
+        key: "behance",
+        label: "Behance",
+        placeholder: "https://behance.net/yourhandle",
+        description: "Shown in the Contact page of your portfolio.",
+        type: "url",
+      },
+    ],
+  },
+  {
+    id: "creative-canvas",
+    name: "Creative Canvas Collective",
+    description:
+      "Portfolio for photographers, models, and artists. Experience section shows only Photographer / Model / Artist subsections that match your resume (keyword-based). Clean timeline, masonry gallery, Cormorant + Space Grotesk.",
+    styleTag: "Artist",
+    categoryTags: ["All", "Creative", "Artist"],
+    personaTags: ["artist", "photographer", "model", "creative"],
+    supportedBlocks: ["custom", "summary", "experience", "projects", "education", "skills"],
+    sectionOrder: ["experience", "projects", "skills", "education"],
+    preview: {
+      kind: "gradient",
+      value: "linear-gradient(160deg, hsl(30,15%,88%) 0%, hsl(30,12%,82%) 50%, hsl(0,0%,75%) 100%)",
+    },
+  },
+  {
+    id: "stellar-showcase",
+    name: "Stellar Showcase",
+    description:
+      "High-impact studio portfolio inspired by Stellar Showcase — bold hero, services overview, and experience-driven selected works for photographers, models, and artists.",
+    styleTag: "Artist",
+    categoryTags: ["All", "Creative", "Artist"],
+    personaTags: ["artist", "photographer", "model", "creative"],
+    supportedBlocks: ["custom", "summary", "experience", "projects", "education", "skills"],
+    sectionOrder: ["experience", "projects", "skills", "education"],
+    preview: {
+      kind: "gradient",
+      value: "linear-gradient(145deg, #0b1120 0%, #1e293b 35%, #4f46e5 70%, #a855f7 100%)",
+    },
   },
 ];

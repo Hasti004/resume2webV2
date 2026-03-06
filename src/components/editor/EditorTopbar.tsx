@@ -22,8 +22,6 @@ import {
   Sparkles,
   Globe,
   Upload,
-  ZoomIn,
-  ZoomOut,
   Loader2,
   Check,
   Share2,
@@ -34,15 +32,13 @@ export type EditorMode = "basics" | "ai";
 export interface EditorTopbarProps {
   mode: EditorMode;
   onModeChange: (mode: EditorMode) => void;
-  previewZoom: number;
-  onPreviewZoomChange: (zoom: number) => void;
+  previewZoom?: number;
+  onPreviewZoomChange?: (zoom: number) => void;
 }
 
 export function EditorTopbar({
   mode,
   onModeChange,
-  previewZoom,
-  onPreviewZoomChange,
 }: EditorTopbarProps) {
   const { resumeId } = useParams<{ resumeId: string }>();
   const navigate = useNavigate();
@@ -62,11 +58,6 @@ export function EditorTopbar({
       : "Previewing last saved version";
   const userInitial = user?.email?.charAt(0)?.toUpperCase() ?? "U";
 
-  const handleZoom = (delta: number) => {
-    const next = Math.max(50, Math.min(150, previewZoom + delta));
-    onModeChange(mode); // keep mode, but ensures callback is referenced
-    onPreviewZoomChange(next);
-  };
 
   const segmentedBase =
     "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium border";
@@ -189,29 +180,6 @@ export function EditorTopbar({
               }
             />
           </Button>
-          <div className="flex items-center gap-0.5 rounded-full bg-gray-100 px-1 py-0.5">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={() => handleZoom(-10)}
-              aria-label="Zoom out"
-            >
-              <ZoomOut className="h-4 w-4" />
-            </Button>
-            <span className="min-w-[2.5rem] text-center text-xs font-medium text-foreground">
-              {previewZoom}%
-            </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={() => handleZoom(10)}
-              aria-label="Zoom in"
-            >
-              <ZoomIn className="h-4 w-4" />
-            </Button>
-          </div>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs">

@@ -82,20 +82,16 @@ export default function EditorEditPage() {
   const setSaving = useResumeDocStore((s) => s.setSaving);
   const setDirty = useResumeDocStore((s) => s.setDirty);
   const dirty = useResumeDocStore((s) => s.dirty);
-  const saving = useResumeDocStore((s) => s.saving);
   const getState = useResumeDocStore.getState;
-  const templateId = useResumeDocStore((s) => s.templateId);
   const [previewZoom, setPreviewZoom] = useState(100);
   const [activeTab, setActiveTab] = useState<EditorMode>("basics");
-  const [previewContainerWidth, setPreviewContainerWidth] = useState(0);
+  const [, setPreviewContainerWidth] = useState(0);
   const previewContainerRef = useRef<HTMLDivElement>(null);
 
   /** Fixed left panel width (Lovable-style); preview takes remaining width. */
   const EDITOR_LEFT_WIDTH_PX = 520;
 
-  /** Fit preview to view (Lovable-style): render at fixed design width and scale to fit container. */
-  const PREVIEW_DESIGN_WIDTH = 1200;
-  const PREVIEW_PADDING_X = 56; /* pl-4 (16) + pr-5 (20) + mr-5 (20) for right gap */
+  // Keep previewContainerWidth measured (used by topbar zoom controls if needed)
   useEffect(() => {
     const el = previewContainerRef.current;
     if (!el) return;
@@ -106,12 +102,6 @@ export default function EditorEditPage() {
     setPreviewContainerWidth(el.clientWidth);
     return () => ro.disconnect();
   }, []);
-
-  const fitScale =
-    previewContainerWidth > 0
-      ? (previewContainerWidth - PREVIEW_PADDING_X) / PREVIEW_DESIGN_WIDTH
-      : 1;
-  const previewScale = fitScale * (previewZoom / 100);
 
   useEffect(() => {
     if (!resumeId) return;
@@ -294,30 +284,14 @@ export default function EditorEditPage() {
               </main>
             </aside>
 
-            {/* Right: Preview — seamless fit (Lovable-style): uniform margin, single canvas */}
+            {/* Right: Preview — renders at natural container width, fully responsive */}
             <aside
               ref={previewContainerRef}
               className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#eef0f4]"
             >
               <ScrollArea className="min-h-0 flex-1">
-                <div className="box-border min-h-full w-full shrink-0 pl-4 pr-5 py-4 flex justify-center items-start">
-                  <div
-                    className="shrink-0 overflow-x-hidden overflow-y-visible rounded-lg shadow-sm mr-5"
-                    style={{
-                      width: Math.round(PREVIEW_DESIGN_WIDTH * previewScale),
-                      maxWidth: "100%",
-                    }}
-                  >
-                    <div
-                      className="origin-top-left rounded-lg overflow-hidden"
-                      style={{
-                        width: PREVIEW_DESIGN_WIDTH,
-                        transform: `scale(${previewScale})`,
-                      }}
-                    >
-                      <PreviewRenderer />
-                    </div>
-                  </div>
+                <div className="min-h-full w-full">
+                  <PreviewRenderer />
                 </div>
               </ScrollArea>
             </aside>

@@ -13,7 +13,58 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, Minus, Trash2, ChevronDown, GripVertical } from "lucide-react";
+import { Plus, Minus, Trash2, ChevronDown, GripVertical, Sparkles, ImageIcon } from "lucide-react";
+import { TEMPLATE_MANIFESTS } from "@/features/templates/templateManifests";
+
+// ── Image input: paste URL or pick from device ────────────────────────────────
+function ImageInput({
+  value,
+  onChange,
+  placeholder,
+  className,
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  placeholder?: string;
+  className?: string;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => onChange(reader.result as string);
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
+  return (
+    <div className="flex gap-1.5">
+      <Input
+        className={className}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder ?? "Paste URL or browse…"}
+      />
+      <button
+        type="button"
+        title="Choose image from device"
+        onClick={() => fileRef.current?.click()}
+        className="shrink-0 flex items-center justify-center h-10 w-10 rounded-xl border border-[hsl(var(--border))] bg-white hover:bg-gray-50 text-gray-500 hover:text-gray-700 transition-colors"
+      >
+        <ImageIcon className="h-4 w-4" />
+      </button>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFile}
+      />
+    </div>
+  );
+}
 
 const STANDARD_KEYS = [
   "name",
@@ -26,6 +77,15 @@ const STANDARD_KEYS = [
   "github",
   "portfolio",
   "heroImage",
+  "heroBgImage",
+  "instagram",
+  "behance",
+  // template-specific keys that get dedicated UI (shouldn't appear as "custom fields")
+  "birthYear",
+  "introLine",
+  "tagline",
+  "studioName",
+  "artistQuote",
 ];
 
 function toKey(label: string): string {
@@ -118,8 +178,75 @@ export function EditorBasicsPanel() {
     return () => cancelAnimationFrame(t);
   }, [focusNewItemBlockId]);
 
+  // ── Template-specific extra fields ─────────────────────────────────────────
+  const currentManifest = TEMPLATE_MANIFESTS.find((m) => m.id === templateId);
+  const extraFields = currentManifest?.extraBasicsFields ?? [];
+  // Fields that are already rendered elsewhere in the panel (don't double-render)
+  const alreadyInPanel = new Set(["heroBgImage", "instagram", "behance", "heroImage"]);
+  // Fields that need a dedicated UI in the template section (not already shown)
+  const dedicatedExtraFields = extraFields.filter((f) => !alreadyInPanel.has(f.key));
+  // Unfilled fields across ALL extra fields (for the banner count)
+  const unfilledExtraFields = extraFields.filter(
+    (f) => !basics[f.key] || String(basics[f.key]).trim() === ""
+  );
+
   return (
     <div className="space-y-8">
+
+      {/* ── Template fields banner ──────────────────────────────────────── */}
+      {extraFields.length > 0 && unfilledExtraFields.length > 0 && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">
+          <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-amber-800">
+              {currentManifest?.name} needs {unfilledExtraFields.length} more field{unfilledExtraFields.length > 1 ? "s" : ""}
+            </p>
+            <p className="mt-0.5 text-xs text-amber-700 leading-relaxed">
+              {unfilledExtraFields.map((f) => f.label).join(", ")} — fill them in below for the best result.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Dedicated template-specific fields ──────────────────────────── */}
+      {dedicatedExtraFields.length > 0 && (
+        <section className="rounded-xl border border-amber-200 bg-amber-50/40 p-4 space-y-3">
+          <h3 className={sectionTitleClass + " flex items-center gap-1.5 !mb-0"}>
+            <Sparkles className="h-3 w-3 text-amber-500" />
+            {currentManifest?.name} fields
+          </h3>
+          {dedicatedExtraFields.map((field) => {
+            const isEmpty = !basics[field.key] || String(basics[field.key]).trim() === "";
+            return (
+              <div key={field.key} className={fieldGroupClass}>
+                <div className="flex items-center justify-between">
+                  <Label className={labelClass}>{field.label}</Label>
+                  {isEmpty && (
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700 border border-amber-200">
+                      New
+                    </span>
+                  )}
+                </div>
+                <Input
+                  className={
+                    inputClass.replace(
+                      "focus-visible:ring-[hsl(var(--ring))] focus-visible:border-[hsl(var(--ring))]",
+                      "focus-visible:ring-amber-400 focus-visible:border-amber-400"
+                    ) +
+                    (isEmpty ? " border-amber-300 ring-1 ring-amber-200" : " border-amber-200")
+                  }
+                  type={field.type === "number" ? "text" : field.type ?? "text"}
+                  value={(basics[field.key] as string) ?? ""}
+                  onChange={(e) => set(field.key, e.target.value)}
+                  placeholder={field.placeholder}
+                />
+                <p className="text-[11px] text-amber-700/60 leading-relaxed mt-1">{field.description}</p>
+              </div>
+            );
+          })}
+        </section>
+      )}
+
       {templateId === "minimal-monochrome" && (
         <div className="space-y-2 border-b border-[hsl(var(--border))] pb-6">
           <h3 className={sectionTitleClass}>Appearance</h3>
@@ -235,13 +362,42 @@ export function EditorBasicsPanel() {
             />
           </div>
           <div className={fieldGroupClass}>
-            <Label className={labelClass}>Hero image</Label>
-            <Input
+            <Label className={labelClass}>Portrait / Hero image</Label>
+            <ImageInput
               className={inputClass}
               value={(basics.heroImage as string) ?? ""}
-              onChange={(e) => set("heroImage", e.target.value)}
-              placeholder="Image URL (optional)"
+              onChange={(val) => set("heroImage", val)}
+              placeholder="Paste URL or browse…"
             />
+          </div>
+          <div className={fieldGroupClass}>
+            <Label className={labelClass}>Background image</Label>
+            <ImageInput
+              className={inputClass}
+              value={(basics.heroBgImage as string) ?? ""}
+              onChange={(val) => set("heroBgImage", val)}
+              placeholder="Paste URL or browse…"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className={fieldGroupClass}>
+              <Label className={labelClass}>Instagram</Label>
+              <Input
+                className={inputClass}
+                value={(basics.instagram as string) ?? ""}
+                onChange={(e) => set("instagram", e.target.value)}
+                placeholder="instagram.com/..."
+              />
+            </div>
+            <div className={fieldGroupClass}>
+              <Label className={labelClass}>Behance</Label>
+              <Input
+                className={inputClass}
+                value={(basics.behance as string) ?? ""}
+                onChange={(e) => set("behance", e.target.value)}
+                placeholder="behance.net/..."
+              />
+            </div>
           </div>
         </div>
       </section>
@@ -361,9 +517,9 @@ export function EditorBasicsPanel() {
                         });
                       };
 
-                      const isDragging = dragState?.blockId === block.id && dragState.fromIdx === idx;
-                      const isDropBefore = dropState?.blockId === block.id && dropState.toIdx === idx && dropState.position === "before";
-                      const isDropAfter = dropState?.blockId === block.id && dropState.toIdx === idx && dropState.position === "after";
+                      const isDragging = dragState != null && dragState.blockId === block.id && dragState.fromIdx === idx;
+                      const isDropBefore = dropState != null && dropState.blockId === block.id && dropState.toIdx === idx && dropState.position === "before";
+                      const isDropAfter = dropState != null && dropState.blockId === block.id && dropState.toIdx === idx && dropState.position === "after";
 
                       const handleDragStart = (e: React.DragEvent) => {
                         const target = e.target as HTMLElement;
@@ -462,7 +618,7 @@ export function EditorBasicsPanel() {
                                     if (!block.id) return;
                                     const next = [...items];
                                     const val = e.target.value;
-                                    const updated = { ...itemObj, degreeType: val };
+                                    const updated: Record<string, unknown> = { ...itemObj, degreeType: val };
                                     const fromY = (itemObj.fromYear as string) || "";
                                     const toY = (itemObj.toYear as string) || "";
                                     if (fromY && !toY && val) {
@@ -504,7 +660,7 @@ export function EditorBasicsPanel() {
                                       if (!block.id) return;
                                       const next = [...items];
                                       const val = e.target.value;
-                                      const updated = { ...itemObj, fromYear: val };
+                                      const updated: Record<string, unknown> = { ...itemObj, fromYear: val };
                                       const toY = (itemObj.toYear as string) || "";
                                       const degType = (itemObj.degreeType as string) || "";
                                       if (val && !toY && degType) {
@@ -597,6 +753,39 @@ export function EditorBasicsPanel() {
                               placeholder="Bullets or paragraph"
                             />
                           </div>
+                          {(block.type === "experience" || block.type === "projects" || block.type === "work") && (
+                            <div className="space-y-2">
+                              <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                                Artwork / Photos
+                              </p>
+                              <div className={fieldGroupClass}>
+                                <Label className={labelClass}>Image 1</Label>
+                                <ImageInput
+                                  className={inputClass}
+                                  value={(itemObj.image as string) ?? ""}
+                                  onChange={(val) => {
+                                    if (!block.id) return;
+                                    const next = [...items];
+                                    next[idx] = { ...itemObj, image: val || undefined };
+                                    updateBlock(block.id, { content: { ...block.content, items: next } });
+                                  }}
+                                />
+                              </div>
+                              <div className={fieldGroupClass}>
+                                <Label className={labelClass}>Image 2</Label>
+                                <ImageInput
+                                  className={inputClass}
+                                  value={(itemObj.image2 as string) ?? ""}
+                                  onChange={(val) => {
+                                    if (!block.id) return;
+                                    const next = [...items];
+                                    next[idx] = { ...itemObj, image2: val || undefined };
+                                    updateBlock(block.id, { content: { ...block.content, items: next } });
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          )}
                             </>
                           )}
                           </div>

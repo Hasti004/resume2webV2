@@ -68,7 +68,7 @@ export function TemplateMinimal({ theme = "dark", basics, blocks }: TemplateMini
           <a href="#" className="text-lg font-semibold tracking-tight transition-opacity hover:opacity-80" style={{ color: c.accent }}>
             {name}
           </a>
-          <div className="flex gap-6 text-sm">
+          <div className="hidden sm:flex gap-4 md:gap-6 text-sm">
             {aboutText && <a href="#about" className="transition-opacity hover:opacity-100" style={{ color: c.textMuted }}>About</a>}
             {experienceItems.length > 0 && <a href="#experience" className="transition-opacity hover:opacity-100" style={{ color: c.textMuted }}>Experience</a>}
             {projectItems.length > 0 && <a href="#projects" className="transition-opacity hover:opacity-100" style={{ color: c.textMuted }}>Projects</a>}
@@ -103,12 +103,12 @@ export function TemplateMinimal({ theme = "dark", basics, blocks }: TemplateMini
                 src={heroImageUrl}
                 alt=""
                 className="h-28 w-28 rounded-2xl object-cover shadow-lg ring-2 sm:h-36 sm:w-36"
-                style={{ ringColor: c.border }}
+                style={{ boxShadow: `0 0 0 2px ${c.border}` }}
               />
             </div>
           )}
           <h1
-            className="text-4xl font-semibold tracking-tight sm:text-5xl"
+            className="text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl"
             style={{
               color: c.accent,
               animation: "portfolio-fade-up 0.6s ease-out 0.1s forwards",
@@ -216,9 +216,9 @@ export function TemplateMinimal({ theme = "dark", basics, blocks }: TemplateMini
                 const url = obj.url ?? obj.link;
                 return (
                   <article key={i} className="portfolio-hover-lift rounded-lg border p-5 shadow-sm" style={{ borderColor: c.border, backgroundColor: c.card }}>
-                    {projName && <h3 className="font-semibold" style={{ color: c.text }}>{String(projName)}</h3>}
-                    {desc && <p className="mt-2 text-sm leading-relaxed" style={{ color: c.textMuted }}>{String(desc)}</p>}
-                    {url && (
+                    {projName != null && projName !== "" && <h3 className="font-semibold" style={{ color: c.text }}>{String(projName)}</h3>}
+                    {desc != null && desc !== "" && <p className="mt-2 text-sm leading-relaxed" style={{ color: c.textMuted }}>{String(desc)}</p>}
+                    {url != null && url !== "" && (
                       <a href={String(url)} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block text-sm font-medium" style={{ color: c.accent }}>
                         View project →
                       </a>
@@ -243,7 +243,7 @@ export function TemplateMinimal({ theme = "dark", basics, blocks }: TemplateMini
                   className="rounded-full border px-4 py-1.5 text-sm transition-transform duration-200 hover:scale-105"
                   style={{ borderColor: c.border, backgroundColor: c.card, color: c.textMuted }}
                 >
-                  {typeof item === "string" ? item : (item as Record<string, unknown>)?.name ?? (item as Record<string, unknown>)?.title ?? String(item)}
+                  {typeof item === "string" ? item : String((item as Record<string, unknown>)?.name ?? (item as Record<string, unknown>)?.title ?? item)}
                 </span>
               ))}
             </div>

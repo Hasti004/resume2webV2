@@ -1,11 +1,10 @@
-import { useRef, useState, useCallback, useEffect } from "react";
+import { useRef, useState, useCallback } from "react";
 import type { ResumeBasics, ResumeBlock } from "@/lib/resumeRepo";
 import {
   getBasicsDisplay,
   getBlockByType,
   getBlockItems,
   getBlockText,
-  getBlockTitle,
   isExperienceItem,
 } from "./portfolioData";
 
@@ -52,7 +51,7 @@ export function TemplateCinematic({ basics, blocks }: TemplateCinematicProps) {
     setMouse({ x: 0.5, y: 0.5 });
   }, []);
 
-  const { name, headline, contact, links, summary } = getBasicsDisplay(basics);
+  const { name, headline, links, summary } = getBasicsDisplay(basics);
   const summaryBlock = getBlockByType(blocks, "summary");
   const experienceBlock = getBlockByType(blocks, "experience");
   const projectsBlock = getBlockByType(blocks, "projects");
@@ -67,11 +66,11 @@ export function TemplateCinematic({ basics, blocks }: TemplateCinematicProps) {
   return (
     <div className="cinematic-portfolio min-h-screen min-w-0 bg-[#050508] text-white font-sans antialiased overflow-x-hidden">
       {/* Minimal nav — Home, Work, About, Contact always visible; compact so they fit in preview */}
-      <nav className="cinematic-nav fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 sm:px-8 md:px-12 py-4 backdrop-blur-md bg-[#050508]/70 border-b border-white/5 min-w-0">
+      <nav className="cinematic-nav sticky top-0 left-0 right-0 z-50 flex items-center justify-between px-4 sm:px-8 md:px-12 py-4 backdrop-blur-md bg-[#050508]/70 border-b border-white/5 min-w-0">
         <a href="#" className="text-sm font-semibold tracking-wide text-white/90 shrink-0">
           {name.split(" ")[0]}
         </a>
-        <div className="flex items-center gap-4 sm:gap-6 text-xs sm:text-sm shrink-0">
+        <div className="hidden sm:flex items-center gap-4 sm:gap-6 text-xs sm:text-sm shrink-0">
           <a href="#" className="text-white/60 transition-colors hover:text-white">Home</a>
           {projectItems.length > 0 && (
             <a href="#work" className="text-white/60 transition-colors hover:text-white">Work</a>
@@ -86,7 +85,7 @@ export function TemplateCinematic({ basics, blocks }: TemplateCinematicProps) {
         ref={heroRef}
         onMouseMove={onHeroMouseMove}
         onMouseLeave={onHeroMouseLeave}
-        className="cinematic-hero relative min-h-screen flex flex-col justify-center px-6 py-24 sm:px-10 md:px-12"
+        className="cinematic-hero relative min-h-[600px] sm:min-h-screen flex flex-col justify-center px-6 py-24 sm:px-10 md:px-12"
       >
         <div className="cinematic-hero-bg absolute inset-0 overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a12] via-[#0d0d18] to-[#050508]" />
@@ -271,14 +270,14 @@ export function TemplateCinematic({ basics, blocks }: TemplateCinematicProps) {
                   return (
                     <div
                       key={i}
-                      className="cinematic-timeline-item relative flex gap-8 py-8 border-b border-white/10 last:border-0"
+                      className="cinematic-timeline-item relative flex flex-col sm:flex-row gap-1 sm:gap-8 py-8 border-b border-white/10 last:border-0"
                       style={{
                         animation: "cinematic-fade-up 0.6s ease-out forwards",
                         opacity: 0,
                         animationDelay: `${0.08 * i}s`,
                       }}
                     >
-                      <div className="flex-shrink-0 w-28 text-sm text-white/50">{item.dates ?? "—"}</div>
+                      <div className="flex-shrink-0 sm:w-28 text-xs sm:text-sm text-white/50">{item.dates ?? "—"}</div>
                       <div>
                         <h4 className="text-lg font-semibold text-white">{String(item.role ?? "")}</h4>
                         {item.company && <p className="text-white/60 text-sm mt-0.5">{String(item.company)}</p>}

@@ -2,6 +2,9 @@ import type { ResumeBasics, ResumeBlock } from "@/lib/resumeRepo";
 import { TemplateMinimal } from "./templates/TemplateMinimal";
 import { TemplateBold } from "./templates/TemplateBold";
 import { TemplateCinematic } from "./templates/TemplateCinematic";
+import { TemplateArtistry } from "./templates/TemplateArtistry";
+import { TemplateStellarShowcase } from "./templates/TemplateStellarShowcase";
+import { TemplateCreativeCanvas } from "./templates/TemplateCreativeCanvas";
 
 export type PreviewTheme = "light" | "dark";
 
@@ -25,6 +28,15 @@ export function PreviewRenderer({ templateId, theme = "dark", basics, blocks }: 
   }
   if (templateId === "cinematic") {
     return <TemplateCinematic basics={basics} blocks={blocks} />;
+  }
+  if (templateId === "artistry") {
+    return <TemplateArtistry basics={basics} blocks={blocks} />;
+  }
+  if (templateId === "stellar-showcase") {
+    return <TemplateStellarShowcase basics={basics} blocks={blocks} />;
+  }
+  if (templateId === "creative-canvas") {
+    return <TemplateCreativeCanvas basics={basics} blocks={blocks} />;
   }
 
   return <DefaultPreview basics={basics} blocks={blocks} templateId={templateId} />;

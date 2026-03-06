@@ -38,7 +38,6 @@ export function TemplatePickerPopover({
 }: TemplatePickerPopoverProps) {
   const currentTemplateId = useResumeDocStore((s) => s.templateId);
   const previewTemplateId = useResumeDocStore((s) => s.previewTemplateId);
-  const originalTemplateId = useResumeDocStore((s) => s.originalTemplateId);
   const setTemplateIdStore = useResumeDocStore((s) => s.setTemplateId);
   const setOriginalTemplateId = useResumeDocStore((s) => s.setOriginalTemplateId);
   const setPreviewTemplateId = useResumeDocStore((s) => s.setPreviewTemplateId);

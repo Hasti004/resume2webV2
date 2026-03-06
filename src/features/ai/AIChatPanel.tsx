@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -147,7 +146,7 @@ export function AIChatPanel({ onClose, onProposePatch }: AIChatPanelProps) {
                 <div className="flex flex-wrap items-center gap-2 pt-1">
                   <Button
                     variant="outline"
-                    size="xs"
+                    size="sm"
                     className="h-7 gap-1.5 border-dashed text-xs text-gray-500"
                     disabled
                     onClick={() => onProposePatch?.({})}
@@ -157,7 +156,7 @@ export function AIChatPanel({ onClose, onProposePatch }: AIChatPanelProps) {
                   </Button>
                   <Button
                     variant="ghost"
-                    size="xs"
+                    size="sm"
                     className="h-7 gap-1.5 text-xs text-gray-500 hover:text-gray-800"
                   >
                     <FileText className="h-3.5 w-3.5" />

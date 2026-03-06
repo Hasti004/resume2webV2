@@ -40,7 +40,7 @@ export function TemplateBold({ basics, blocks }: TemplateBoldProps) {
           <a href="#" className="text-lg font-bold text-white">
             {name}
           </a>
-          <div className="flex gap-8 text-sm text-white/80">
+          <div className="hidden sm:flex gap-6 text-sm text-white/80">
             {aboutText && <a href="#about" className="hover:text-white transition-colors">About</a>}
             {experienceItems.length > 0 && <a href="#experience" className="hover:text-white transition-colors">Experience</a>}
             {projectItems.length > 0 && <a href="#projects" className="hover:text-white transition-colors">Projects</a>}
@@ -89,7 +89,7 @@ export function TemplateBold({ basics, blocks }: TemplateBoldProps) {
 
         <div className="relative mx-auto max-w-5xl text-center">
           <h1
-            className="text-5xl font-bold tracking-tight text-white drop-shadow-lg sm:text-6xl"
+            className="text-4xl font-bold tracking-tight text-white drop-shadow-lg sm:text-5xl md:text-6xl"
             style={{
               animation: "portfolio-fade-up 0.6s ease-out 0.1s forwards",
               opacity: 0,
@@ -222,9 +222,9 @@ export function TemplateBold({ basics, blocks }: TemplateBoldProps) {
                     key={i}
                     className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur portfolio-hover-lift hover:border-[#a78bfa]/50 transition-colors"
                   >
-                    {projName && <h3 className="text-lg font-semibold text-white">{String(projName)}</h3>}
-                    {desc && <p className="mt-3 text-white/80 leading-relaxed">{String(desc)}</p>}
-                    {url && (
+                    {projName != null && projName !== "" && <h3 className="text-lg font-semibold text-white">{String(projName)}</h3>}
+                    {desc != null && desc !== "" && <p className="mt-3 text-white/80 leading-relaxed">{String(desc)}</p>}
+                    {url != null && url !== "" && (
                       <a
                         href={String(url)}
                         target="_blank"
@@ -257,7 +257,7 @@ export function TemplateBold({ basics, blocks }: TemplateBoldProps) {
                   key={i}
                   className="rounded-full bg-white/10 px-4 py-2 text-sm text-white/90 border border-white/10 transition-transform duration-200 hover:scale-105"
                 >
-                  {typeof item === "string" ? item : (item as Record<string, unknown>)?.name ?? (item as Record<string, unknown>)?.title ?? String(item)}
+                  {typeof item === "string" ? item : String((item as Record<string, unknown>)?.name ?? (item as Record<string, unknown>)?.title ?? item)}
                 </span>
               ))}
             </div>

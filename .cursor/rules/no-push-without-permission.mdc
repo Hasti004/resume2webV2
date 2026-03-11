@@ -1,0 +1,11 @@
+---
+description: Never push or commit unless the user explicitly asks to
+alwaysApply: true
+---
+
+# No Push / Commit Without Explicit Permission
+
+- **Do not run `git commit`** unless the user explicitly says to commit (e.g. "commit this", "commit and push", "save to git").
+- **Do not run `git push`** unless the user explicitly says to push (e.g. "push to remote", "push my changes", "deploy to repo").
+
+You may run `git status`, `git diff`, `git add`, or suggest commands for the user to run themselves. Do not execute commit or push on the user's behalf without clear, explicit instruction.

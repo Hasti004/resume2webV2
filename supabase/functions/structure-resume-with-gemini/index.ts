@@ -21,40 +21,33 @@ const GeminiResultSchema = z.object({
   blocks: z.array(BlockSchema),
 });
 
-function jsonResponse(obj: unknown, status = 200) {
+// Always return HTTP 200 so supabase.functions.invoke can read the body.
+// Use ok:false + message for errors so the client can surface the real reason.
+function jsonResponse(obj: unknown) {
   return new Response(JSON.stringify(obj), {
-    status,
+    status: 200,
     headers: { "Content-Type": "application/json", ...corsHeaders },
   });
 }
 
-function errResponse(stage: string, error: string, status = 500) {
-  console.error(`[structure-resume-with-gemini] ${stage}:`, error);
-  return jsonResponse({ ok: false, stage, error }, status);
+function errResponse(message: string) {
+  console.error(`[structure-resume-with-gemini] error:`, message);
+  return jsonResponse({ ok: false, error: message, message });
 }
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// Fast Flash models first; one attempt each to stay within 1–2 min for ~10k char resumes
 const modelsToTry = [
-  { name: "gemini-flash-latest", version: "v1beta" }, // Cheapest and fastest
-  { name: "gemini-2.5-flash", version: "v1beta" },
   { name: "gemini-2.0-flash", version: "v1beta" },
-  { name: "gemini-2.0-flash-exp", version: "v1beta" },
-  { name: "gemini-pro-latest", version: "v1beta" },
-  { name: "gemini-2.5-pro", version: "v1beta" },
-  { name: "gemini-3-pro-preview", version: "v1beta" },
+  { name: "gemini-2.5-flash", version: "v1beta" },
+  { name: "gemini-flash-latest", version: "v1beta" },
 ];
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
-
-  const ensureCors = (res: Response) => {
-    const h = new Headers(res.headers);
-    Object.entries(corsHeaders).forEach(([k, v]) => h.set(k, v));
-    return new Response(res.body, { status: res.status, statusText: res.statusText, headers: h });
-  };
 
   try {
     const body = await req.json().catch(() => ({}));
@@ -64,27 +57,21 @@ Deno.serve(async (req) => {
     console.log(`[structure-resume-with-gemini] resumeId: ${resumeId}, text length: ${text.length}`);
 
     if (!resumeId || !UUID_REGEX.test(resumeId)) {
-      return jsonResponse(
-        { error: "Invalid input", message: "Valid resumeId (UUID) is required." },
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return errResponse("Valid resumeId (UUID) is required.");
     }
 
     if (!text || text.length < 20) {
-      return jsonResponse(
-        { error: "Text too short", message: "Resume text must be at least 20 characters." },
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return errResponse(`Resume text is too short (${text.length} chars). Please provide at least 20 characters.`);
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!supabaseUrl || !supabaseServiceKey) {
-      return errResponse("config", "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY", 500);
+      return errResponse("Server configuration error: Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.");
     }
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Optional: verify resume exists and optionally check auth
+    // Optional: verify ownership via auth header
     const authHeader = req.headers.get("Authorization");
     if (authHeader) {
       const token = authHeader.replace("Bearer ", "");
@@ -96,10 +83,7 @@ Deno.serve(async (req) => {
           .eq("id", resumeId)
           .maybeSingle();
         if (row && (row as { user_id?: string }).user_id !== user.id) {
-          return jsonResponse(
-            { error: "Forbidden", message: "You do not own this resume." },
-            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+          return errResponse("You do not own this resume.");
         }
       }
     }
@@ -111,25 +95,21 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (resumeErr || !resumeRow) {
-      return jsonResponse(
-        { error: "Not found", message: "Resume not found." },
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return errResponse("Resume not found. It may have been deleted.");
     }
 
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     if (!GEMINI_API_KEY) {
-      console.error("GEMINI_API_KEY is not configured");
-      return errResponse("config", "Gemini API key not configured", 500);
+      return errResponse("Gemini API key is not configured. Please add GEMINI_API_KEY in your Supabase project's Edge Function secrets.");
     }
 
-    const resumeInput = text.slice(0, 18000);
-    const prompt = `Parse this resume into JSON. Include ALL sections: experience, education, skills, projects, certifications, awards, languages. Output ONLY valid JSON, no markdown.
+    // Cap at 10k chars for fast response (target: result within 1–2 min for typical resumes)
+    const resumeInput = text.slice(0, 10000);
+    const prompt = `Parse this resume into JSON. Sections: experience, education, skills, projects, certifications, awards. Output ONLY valid JSON.
 
-Schema:
 {"basics":{"name":null,"email":null,"phone":null,"location":null,"headline":null,"summary":null,"linkedin":null,"github":null,"portfolio":null},"blocks":[{"type":"experience","title":"Work Experience","data":{"items":[{"role":"","company":"","dates":"","description":""}]}},{"type":"education","data":{"items":[{"name":"","degree":"","dates":""}]}},{"type":"skills","data":{"items":[]}},{"type":"projects","data":{"items":[{"name":"","description":"","url":""}]}}]}
 
-Use blocks[].data.items for lists. Use data.text for single-text blocks. Preserve all details.
+Use blocks[].data.items for lists. Preserve all content.
 
 Resume:
 ${resumeInput}`;
@@ -139,57 +119,52 @@ ${resumeInput}`;
 
     for (let modelIndex = 0; modelIndex < modelsToTry.length; modelIndex++) {
       const { name: modelName, version } = modelsToTry[modelIndex];
+      try {
+        console.log(`[structure-resume-with-gemini] trying model: ${modelName}`);
+        const GEMINI_URL = `https://generativelanguage.googleapis.com/${version}/models/${modelName}:generateContent?key=${GEMINI_API_KEY}`;
+        response = await fetch(GEMINI_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.2,
+              maxOutputTokens: 8192,
+              responseMimeType: "application/json",
+            },
+          }),
+        });
 
-      for (let attempt = 0; attempt < 2; attempt++) {
-        try {
-          console.log(`[structure-resume-with-gemini] Gemini attempt ${attempt + 1} with model: ${modelName} (${version})`);
-          const GEMINI_URL = `https://generativelanguage.googleapis.com/${version}/models/${modelName}:generateContent?key=${GEMINI_API_KEY}`;
-          response = await fetch(GEMINI_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              contents: [{ role: "user", parts: [{ text: prompt }] }],
-              generationConfig: {
-                temperature: 0.2,
-                maxOutputTokens: 16384,
-                responseMimeType: "application/json",
-              },
-            }),
-          });
-
-          if (response.ok) {
-            console.log(`[structure-resume-with-gemini] Success with model: ${modelName}`);
-            break;
-          }
-
-          if (response.status === 429) {
-            console.log("[structure-resume-with-gemini] Rate limited, waiting before retry...");
-            await new Promise((resolve) => setTimeout(resolve, 2000));
-            continue;
-          }
-
-          if (response.status === 404) {
-            const errorText = await response.text();
-            console.log(`[structure-resume-with-gemini] Model ${modelName} not found (404), trying next model...`);
-            lastError = new Error(`Model ${modelName} not available: ${errorText}`);
-            break;
-          }
-
-          const errorText = await response.text();
-          console.error(`[structure-resume-with-gemini] Gemini API error: ${response.status}`, errorText);
-          lastError = new Error(`API returned ${response.status}: ${errorText}`);
-        } catch (e) {
-          console.error("[structure-resume-with-gemini] Fetch error:", e);
-          lastError = e instanceof Error ? e : new Error("Unknown error");
-          await new Promise((resolve) => setTimeout(resolve, 1000));
+        if (response.ok) {
+          console.log(`[structure-resume-with-gemini] success with model: ${modelName}`);
+          break;
         }
-      }
 
-      if (response && response.ok) break;
+        if (response.status === 429) {
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+          lastError = new Error(`Gemini rate limit hit (model: ${modelName}). Please try again in a moment.`);
+          response = null;
+          continue;
+        }
+
+        if (response.status === 404) {
+          lastError = new Error(`Model ${modelName} not available, trying next…`);
+          response = null;
+          continue;
+        }
+
+        const errorText = await response.text();
+        lastError = new Error(`Gemini API error (${response.status}): ${errorText.slice(0, 200)}`);
+        response = null;
+      } catch (e) {
+        lastError = e instanceof Error ? e : new Error("Network error calling Gemini.");
+        response = null;
+      }
     }
 
     if (!response || !response.ok) {
-      throw lastError || new Error("Failed to get Gemini response after retries");
+      const msg = lastError?.message ?? "All Gemini models failed. Check your API key and try again.";
+      return errResponse(msg);
     }
 
     const geminiResponse = await response.json();
@@ -201,10 +176,10 @@ ${resumeInput}`;
     let content = geminiResponse.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!content || content.trim().length === 0) {
       console.error("[structure-resume-with-gemini] Empty response from Gemini:", JSON.stringify(geminiResponse));
-      throw new Error(`Empty response from Gemini. Finish reason: ${finishReason || "unknown"}`);
+      return errResponse(`Empty response from Gemini (finish reason: ${finishReason ?? "unknown"}). Please try again.`);
     }
 
-    // Clean markdown code blocks if present (same as reference)
+    // Clean markdown code blocks if present
     let cleanedContent = content.trim();
     if (cleanedContent.startsWith("```json")) {
       cleanedContent = cleanedContent.slice(7);
@@ -226,10 +201,10 @@ ${resumeInput}`;
       parsed = result.data;
     } catch (parseError) {
       const msg = finishReason === "MAX_TOKENS"
-        ? "Response was truncated. Try again."
-        : "Failed to parse structuring response.";
+        ? "Gemini response was cut off. Try again or use a shorter resume."
+        : `Failed to parse Gemini response: ${parseError instanceof Error ? parseError.message : "unknown"}`;
       console.error("[structure-resume-with-gemini] Parse failed:", cleanedContent.slice(0, 300));
-      throw new Error(msg);
+      return errResponse(msg);
     }
 
     // Save to DB
@@ -253,13 +228,13 @@ ${resumeInput}`;
       })
       .eq("id", resumeId);
 
-    if (updateError) throw new Error(updateError.message);
+    if (updateError) return errResponse(`Failed to save resume basics: ${updateError.message}`);
 
     const { error: deleteError } = await supabase
       .from(RESUME_BLOCKS_TABLE)
       .delete()
       .eq("resume_id", resumeId);
-    if (deleteError) throw new Error(deleteError.message);
+    if (deleteError) return errResponse(`Failed to clear old blocks: ${deleteError.message}`);
 
     if (parsed.blocks.length > 0) {
       const rows = parsed.blocks.map((b, i) => ({
@@ -270,7 +245,7 @@ ${resumeInput}`;
         sort_order: i,
       }));
       const { error: insertError } = await supabase.from(RESUME_BLOCKS_TABLE).insert(rows);
-      if (insertError) throw new Error(insertError.message);
+      if (insertError) return errResponse(`Failed to save resume blocks: ${insertError.message}`);
     }
 
     const blocksCount = parsed.blocks.length;
@@ -282,15 +257,11 @@ ${resumeInput}`;
       blocks: parsed.blocks.map((b) => ({ type: b.type, title: b.title ?? null, data: b.data ?? {} })),
     });
   } catch (e) {
-    console.error("[structure-resume-with-gemini] error:", e);
-    return ensureCors(
-      jsonResponse(
-        {
-          error: "Structuring failed",
-          message: e instanceof Error ? e.message : "Unknown error occurred",
-        },
-        500
-      )
-    );
+    console.error("[structure-resume-with-gemini] unhandled error:", e);
+    return jsonResponse({
+      ok: false,
+      error: "Structuring failed",
+      message: e instanceof Error ? e.message : "An unexpected error occurred. Please try again.",
+    });
   }
 });

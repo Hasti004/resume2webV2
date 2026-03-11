@@ -1,0 +1,90 @@
+---
+description: All resume/portfolio templates must be fully responsive across all device sizes
+globs: src/features/templates/templates/*.tsx
+alwaysApply: false
+---
+
+# Template Responsiveness — Required for ALL Templates
+
+Every template (existing and new) must render correctly on all these viewports:
+
+| Device class | Width range |
+|---|---|
+| Mobile (iPhone SE, Android) | 320px – 480px |
+| Large phone (iPhone Pro Max, Android XL) | 481px – 767px |
+| Tablet / iPad | 768px – 1024px |
+| Laptop / MacBook | 1025px – 1440px |
+| Desktop | 1441px+ |
+
+---
+
+## Rules
+
+### 1. Never use viewport units (`vw`, `vh`) in templates
+Templates render at a fixed 1200px design width inside a CSS-transformed preview container. `vw`/`vh` reference the actual browser viewport, not the container, causing layout breaks.
+
+```tsx
+// ❌ BAD
+fontSize: "clamp(3rem, 12vw, 10rem)"
+minHeight: "100vh"
+
+// ✅ GOOD
+fontSize: "9.5rem"          // fixed value calibrated to 1200px design width
+minHeight: "780px"          // fixed px height
+```
+
+### 2. Never use `position: fixed` inside templates
+`fixed` escapes the scaled preview container and overlays the editor chrome.
+
+```tsx
+// ❌ BAD
+<nav style={{ position: "fixed", top: 0 }}>
+
+// ✅ GOOD
+<nav style={{ position: "sticky", top: 0 }}>
+```
+
+### 3. All layouts must use responsive grid/flex
+Use CSS Grid or Flexbox with `flex-wrap: wrap` or responsive column counts so content reflows at smaller widths.
+
+```tsx
+// ❌ BAD — hardcoded two columns, breaks on mobile
+display: "grid", gridTemplateColumns: "1fr 1fr"
+
+// ✅ GOOD — collapses to single column below 640px
+display: "grid",
+gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))"
+```
+
+### 4. Font sizes must scale down on small screens
+Use relative units (`rem`) sized for the 1200px design width, OR use a CSS `@media` query within the template's injected `<style>` tag.
+
+```css
+/* Inside the template's injected CSS string */
+@media (max-width: 768px) {
+  .hero-title { font-size: 4rem !important; }
+  .works-title { font-size: 6rem !important; }
+}
+@media (max-width: 480px) {
+  .hero-title { font-size: 2.5rem !important; }
+}
+```
+
+### 5. Navigation must collapse on mobile
+On screens ≤ 768px, show a hamburger menu (or stack nav links vertically). The desktop nav `display: flex` should switch to `display: none` on mobile, and vice versa for the hamburger button.
+
+### 6. Images must be responsive
+All images: `width: "100%"`, `height: "auto"`, `objectFit: "cover"`, never fixed pixel dimensions for images that are part of the layout flow.
+
+### 7. Padding/margins must shrink on mobile
+Large desktop padding (e.g. `padding: "5rem 8rem"`) must reduce on mobile to prevent content being squished.
+
+---
+
+## Testing Checklist (before considering a template done)
+- [ ] Hero section readable on 375px wide screen
+- [ ] Navigation collapses/hamburger works on mobile
+- [ ] No horizontal scroll at any breakpoint
+- [ ] Two-column layouts collapse to single column below 640px
+- [ ] Font sizes don't overflow containers on small screens
+- [ ] Images don't overflow their containers

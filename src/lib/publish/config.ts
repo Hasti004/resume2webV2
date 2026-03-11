@@ -1,22 +1,17 @@
 /**
  * Publish URL config: path-based debug mode now; subdomain later.
- * Used for building published site URLs and for routing.
+ * Published links always use the canonical production URL so "View Published Site" leads to resume2web.byteosaurus.com/<slug>.
  */
 
-const isDev = typeof import.meta !== "undefined" && import.meta.env?.DEV;
+/** Canonical base URL for published sites. "View Published Site" and stored URLs use this. */
+const PUBLISHED_SITE_BASE = "https://resume2web.byteosaurus.com";
 
-/** Base URL for published sites. Debug mode: path-based (e.g. /hastivakani). */
+/** Base URL for published sites (canonical production). Override with VITE_PUBLISHED_SITE_BASE_URL if needed. */
 export function getPublishedSiteBaseUrl(): string {
-  if (typeof window !== "undefined") {
-    const origin = window.location.origin;
-    return origin;
-  }
-  // SSR or build: use env or default
-  const base = import.meta.env?.VITE_APP_URL ?? (isDev ? "http://localhost:5173" : "https://resume2web.byteosaurus.com");
-  return base;
+  return (import.meta.env?.VITE_PUBLISHED_SITE_BASE_URL as string) || PUBLISHED_SITE_BASE;
 }
 
-/** Full URL for a published site by slug (path-based for now). */
+/** Full URL for a published site by slug (e.g. https://resume2web.byteosaurus.com/hastivakani). */
 export function getPublishedSiteUrl(slug: string): string {
   const base = getPublishedSiteBaseUrl().replace(/\/$/, "");
   return `${base}/${encodeURIComponent(slug)}`;

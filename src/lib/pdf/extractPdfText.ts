@@ -37,9 +37,10 @@ export type ExtractPdfTextOpts = {
   maxChars?: number;
 };
 
-const DEFAULT_TIMEOUT_MS = 12000;
+const DEFAULT_TIMEOUT_MS = 90_000; // 90s for large PDFs
 const DEFAULT_MIN_CHARS = 200;
 const DEFAULT_MAX_CHARS = 200_000;
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 
 /**
  * Normalize raw PDF-extracted text: CRLF→LF, remove nulls, collapse spaces (keep newlines), trim lines, collapse 3+ blank lines to 2.
@@ -103,7 +104,7 @@ function mapPdfError(e: unknown): PdfExtractError {
   if (e instanceof TimeoutError) {
     return {
       code: "TIMEOUT",
-      messageUser: "PDF extraction took too long. Try a smaller file or paste the text instead.",
+      messageUser: "This PDF took too long to process. Use a shorter file (or fewer pages), or use “Paste text” below and paste your resume content instead.",
       messageDev: msg,
       cause: e,
     };
@@ -168,6 +169,27 @@ export async function extractPdfText(
         code: "PDF_EXTRACTION_FAILED",
         messageUser: "The selected file is empty.",
         messageDev: "file.size <= 0",
+      },
+      meta,
+    };
+  }
+
+  if (fileSize > MAX_FILE_SIZE_BYTES) {
+    const meta: PdfExtractMeta = {
+      fileName,
+      fileSize,
+      fileType,
+      startedAt: Date.now(),
+      endedAt: Date.now(),
+      durationMs: 0,
+      charCount: 0,
+    };
+    return {
+      ok: false,
+      error: {
+        code: "PDF_EXTRACTION_FAILED",
+        messageUser: "File is too large (max 10MB). Use a smaller file or use “Paste text” below to paste your resume instead.",
+        messageDev: `file.size ${fileSize} > ${MAX_FILE_SIZE_BYTES}`,
       },
       meta,
     };

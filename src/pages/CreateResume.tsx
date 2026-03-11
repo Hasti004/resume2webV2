@@ -260,6 +260,9 @@ export default function CreateResume() {
                   <p className="text-xs text-muted-foreground">
                     PDF, DOCX, TXT, JSON, or Images (max 10MB)
                   </p>
+                  <p className="mt-1 text-[11px] text-muted-foreground/80">
+                    Long PDFs may take a minute or time out — for very long resumes, “Paste text” is more reliable.
+                  </p>
                 </label>
               </CardContent>
             </Card>

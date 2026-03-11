@@ -4,7 +4,7 @@
  * No parsing checks, no validation checks — only draft identity and template.
  */
 
-import { getDraftById, getLatestDraft, createDraft } from "@/lib/resumeRepo";
+import { getDraftById, getLatestDraft } from "@/lib/resumeRepo";
 
 export type EditorIntent = "open-editor" | "open-template";
 
@@ -23,8 +23,9 @@ export interface EnsureDraftResult {
 /**
  * Ensures a draft exists and returns where to go.
  * Step 1: No auth → nextRoute = '/auth'.
- * Step 2: Resolve draft: requestedResumeId (if owned by user) → latest draft → create new.
- * Step 3: nextRoute by intent and templateId:
+ * Step 2: Resolve draft: requestedResumeId (if owned by user) → latest draft. Do NOT auto-create.
+ * Step 3: If no draft → nextRoute = '/dashboard' (new accounts stay empty until they create a resume).
+ * Step 4: nextRoute by intent and templateId:
  *   - intent === 'open-template' → /dashboard/editor/:id/template
  *   - templateId exists → /dashboard/editor/:id
  *   - templateId missing → /dashboard/editor/:id/template
@@ -45,7 +46,7 @@ export async function ensureDraftAndRoute(input: EnsureDraftInput): Promise<Ensu
     draft = await getLatestDraft(userId);
   }
   if (!draft) {
-    draft = await createDraft(userId);
+    return { resumeId: "", templateId: null, nextRoute: "/dashboard" };
   }
 
   const id = draft.id;

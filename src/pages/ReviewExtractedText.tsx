@@ -10,6 +10,24 @@ import type { ResumeBasics } from "@/lib/resumeRepo";
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
 
+const STRUCTURE_TIMEOUT_MS = 180_000; // 3 minutes
+
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(message)), ms);
+    promise.then(
+      (v) => {
+        clearTimeout(timer);
+        resolve(v);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      }
+    );
+  });
+}
+
 /**
  * Median page: shows extracted text from PDF so the user can verify extraction.
  * Continue → create project → structure with Gemini (structure-resume-with-gemini) → template selection.
@@ -41,9 +59,11 @@ export default function ReviewExtractedText() {
     setCreating(true);
     try {
       const newId = await createProjectFromSource(user.id, { text });
-      console.log("created resumeId (from review):", newId);
-      const structured = await structureResumeWithGemini(newId, text);
-      // Persist Gemini result so the editor and loadResumeDoc show it for editing
+      const structured = await withTimeout(
+        structureResumeWithGemini(newId, text),
+        STRUCTURE_TIMEOUT_MS,
+        "Structuring hit the 3-minute limit. Check your connection and try again, or ensure the Edge Function and Gemini API key are set in Supabase."
+      );
       await saveParsedResult(newId, {
         basics: (structured.basics ?? {}) as ResumeBasics,
         blocks: (structured.blocks ?? []).map((b, i) => ({
@@ -54,7 +74,8 @@ export default function ReviewExtractedText() {
       });
       navigate(`/dashboard/editor/${newId}/structured`, { state: structured, replace: false });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to create or structure resume");
+      const message = err instanceof Error ? err.message : "Failed to create or structure resume";
+      toast.error(message, { duration: 8000 });
     } finally {
       setCreating(false);
     }
@@ -104,7 +125,7 @@ export default function ReviewExtractedText() {
             </CardContent>
           </Card>
 
-          <div className="mt-6 flex flex-wrap gap-3">
+          <div className="mt-6 flex flex-wrap items-center gap-3">
             <Button
               type="button"
               variant="outline"
@@ -122,7 +143,7 @@ export default function ReviewExtractedText() {
               {creating ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating & structuring… (may take up to a minute)
+                  Creating & structuring… (3 min timeout)
                 </>
               ) : (
                 <>
@@ -132,6 +153,9 @@ export default function ReviewExtractedText() {
               )}
             </Button>
           </div>
+          <p className="mt-3 text-sm text-muted-foreground">
+            Structuring is required. You have a 3-minute timeout. If it fails, ensure the structure-resume-with-gemini Edge Function is deployed and has a valid Gemini API key (Supabase dashboard).
+          </p>
         </div>
       </div>
     </DashboardLayout>

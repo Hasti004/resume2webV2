@@ -14,7 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Plus, Minus, Trash2, ChevronDown, GripVertical, Sparkles, ImageIcon } from "lucide-react";
-import { TEMPLATE_MANIFESTS } from "@/features/templates/templateManifests";
+import { TEMPLATE_MANIFESTS, TEMPLATE_BASICS_HINTS } from "@/features/templates/templateManifests";
 
 // ── Image input: paste URL or pick from device ────────────────────────────────
 function ImageInput({
@@ -77,7 +77,6 @@ const STANDARD_KEYS = [
   "github",
   "portfolio",
   "heroImage",
-  "heroBgImage",
   "instagram",
   "behance",
   // template-specific keys that get dedicated UI (shouldn't appear as "custom fields")
@@ -182,7 +181,7 @@ export function EditorBasicsPanel() {
   const currentManifest = TEMPLATE_MANIFESTS.find((m) => m.id === templateId);
   const extraFields = currentManifest?.extraBasicsFields ?? [];
   // Fields that are already rendered elsewhere in the panel (don't double-render)
-  const alreadyInPanel = new Set(["heroBgImage", "instagram", "behance", "heroImage"]);
+  const alreadyInPanel = new Set(["instagram", "behance", "heroImage"]);
   // Fields that need a dedicated UI in the template section (not already shown)
   const dedicatedExtraFields = extraFields.filter((f) => !alreadyInPanel.has(f.key));
   // Unfilled fields across ALL extra fields (for the banner count)
@@ -190,10 +189,22 @@ export function EditorBasicsPanel() {
     (f) => !basics[f.key] || String(basics[f.key]).trim() === ""
   );
 
+  // When a template is active, show which standard fields it uses (amber highlight + sample placeholder)
+  const templateHints = templateId ? TEMPLATE_BASICS_HINTS[templateId] : undefined;
+  const getPlaceholder = (key: string, defaultPlaceholder: string) =>
+    templateHints?.[key] ?? defaultPlaceholder;
+  const isTemplateEditableField = (key: string) => Boolean(templateHints?.[key]);
+  const amberFieldWrapperClass = "rounded-xl border border-amber-200 bg-amber-50/50 px-3 py-2.5 space-y-1";
+
   return (
     <div className="space-y-8">
 
       {/* ── Template fields banner ──────────────────────────────────────── */}
+      {templateHints && (
+        <p className="text-xs text-amber-700 rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2">
+          <strong>Yellow fields</strong> = used by this template. Placeholder text shows sample content so you can find it on the preview.
+        </p>
+      )}
       {extraFields.length > 0 && unfilledExtraFields.length > 0 && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">
           <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
@@ -264,43 +275,43 @@ export function EditorBasicsPanel() {
       <section>
         <h3 className={sectionTitleClass}>Contact</h3>
         <div className="space-y-3">
-          <div className={fieldGroupClass}>
+          <div className={isTemplateEditableField("name") ? amberFieldWrapperClass : fieldGroupClass}>
             <Label className={labelClass}>Name</Label>
             <Input
-              className={inputClass}
+              className={inputClass + (isTemplateEditableField("name") ? " border-amber-300 focus-visible:ring-amber-400 focus-visible:border-amber-400" : "")}
               value={(basics.name as string) ?? ""}
               onChange={(e) => set("name", e.target.value)}
-              placeholder="Full name"
+              placeholder={getPlaceholder("name", "Full name")}
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className={fieldGroupClass}>
+            <div className={isTemplateEditableField("email") ? amberFieldWrapperClass : fieldGroupClass}>
               <Label className={labelClass}>Email</Label>
               <Input
-                className={inputClass}
+                className={inputClass + (isTemplateEditableField("email") ? " border-amber-300 focus-visible:ring-amber-400 focus-visible:border-amber-400" : "")}
                 type="email"
                 value={(basics.email as string) ?? ""}
                 onChange={(e) => set("email", e.target.value)}
-                placeholder="you@example.com"
+                placeholder={getPlaceholder("email", "you@example.com")}
               />
             </div>
-            <div className={fieldGroupClass}>
+            <div className={isTemplateEditableField("phone") ? amberFieldWrapperClass : fieldGroupClass}>
               <Label className={labelClass}>Phone</Label>
               <Input
-                className={inputClass}
+                className={inputClass + (isTemplateEditableField("phone") ? " border-amber-300 focus-visible:ring-amber-400 focus-visible:border-amber-400" : "")}
                 value={(basics.phone as string) ?? ""}
                 onChange={(e) => set("phone", e.target.value)}
-                placeholder="+1 234 567 8900"
+                placeholder={getPlaceholder("phone", "+1 234 567 8900")}
               />
             </div>
           </div>
-          <div className={fieldGroupClass}>
+          <div className={isTemplateEditableField("location") ? amberFieldWrapperClass : fieldGroupClass}>
             <Label className={labelClass}>Location</Label>
             <Input
-              className={inputClass}
+              className={inputClass + (isTemplateEditableField("location") ? " border-amber-300 focus-visible:ring-amber-400 focus-visible:border-amber-400" : "")}
               value={(basics.location as string) ?? ""}
               onChange={(e) => set("location", e.target.value)}
-              placeholder="City, Country"
+              placeholder={getPlaceholder("location", "City, Country")}
             />
           </div>
         </div>
@@ -309,22 +320,22 @@ export function EditorBasicsPanel() {
       <section>
         <h3 className={sectionTitleClass}>About</h3>
         <div className="space-y-3">
-          <div className={fieldGroupClass}>
+          <div className={isTemplateEditableField("headline") ? amberFieldWrapperClass : fieldGroupClass}>
             <Label className={labelClass}>Headline</Label>
             <Input
-              className={inputClass}
+              className={inputClass + (isTemplateEditableField("headline") ? " border-amber-300 focus-visible:ring-amber-400 focus-visible:border-amber-400" : "")}
               value={(basics.headline as string) ?? ""}
               onChange={(e) => set("headline", e.target.value)}
-              placeholder="e.g. Senior Frontend Developer"
+              placeholder={getPlaceholder("headline", "e.g. Senior Frontend Developer")}
             />
           </div>
-          <div className={fieldGroupClass}>
+          <div className={isTemplateEditableField("summary") ? amberFieldWrapperClass : fieldGroupClass}>
             <Label className={labelClass}>Summary</Label>
             <Textarea
-              className={inputClass + " resize-none"}
+              className={inputClass + " resize-none" + (isTemplateEditableField("summary") ? " border-amber-300 focus-visible:ring-amber-400 focus-visible:border-amber-400" : "")}
               value={(basics.summary as string) ?? ""}
               onChange={(e) => set("summary", e.target.value)}
-              placeholder="Brief professional summary"
+              placeholder={getPlaceholder("summary", "Brief professional summary")}
               rows={3}
             />
           </div>
@@ -334,50 +345,44 @@ export function EditorBasicsPanel() {
       <section>
         <h3 className={sectionTitleClass}>Links</h3>
         <div className="space-y-3">
-          <div className={fieldGroupClass}>
+          <div className={isTemplateEditableField("linkedin") ? amberFieldWrapperClass : fieldGroupClass}>
             <Label className={labelClass}>LinkedIn</Label>
             <Input
-              className={inputClass}
+              className={inputClass + (isTemplateEditableField("linkedin") ? " border-amber-300 focus-visible:ring-amber-400 focus-visible:border-amber-400" : "")}
               value={(basics.linkedin as string) ?? ""}
               onChange={(e) => set("linkedin", e.target.value)}
-              placeholder="linkedin.com/in/..."
+              placeholder={getPlaceholder("linkedin", "linkedin.com/in/...")}
             />
           </div>
-          <div className={fieldGroupClass}>
+          <div className={isTemplateEditableField("github") ? amberFieldWrapperClass : fieldGroupClass}>
             <Label className={labelClass}>GitHub</Label>
             <Input
-              className={inputClass}
+              className={inputClass + (isTemplateEditableField("github") ? " border-amber-300 focus-visible:ring-amber-400 focus-visible:border-amber-400" : "")}
               value={(basics.github as string) ?? ""}
               onChange={(e) => set("github", e.target.value)}
-              placeholder="github.com/..."
+              placeholder={getPlaceholder("github", "github.com/...")}
             />
           </div>
-          <div className={fieldGroupClass}>
+          <div className={isTemplateEditableField("portfolio") ? amberFieldWrapperClass : fieldGroupClass}>
             <Label className={labelClass}>Portfolio</Label>
             <Input
-              className={inputClass}
+              className={inputClass + (isTemplateEditableField("portfolio") ? " border-amber-300 focus-visible:ring-amber-400 focus-visible:border-amber-400" : "")}
               value={(basics.portfolio as string) ?? ""}
               onChange={(e) => set("portfolio", e.target.value)}
-              placeholder="your-site.com"
+              placeholder={getPlaceholder("portfolio", "your-site.com")}
             />
           </div>
-          <div className={fieldGroupClass}>
+          <div className={isTemplateEditableField("heroImage") ? amberFieldWrapperClass : fieldGroupClass}>
             <Label className={labelClass}>Portrait / Hero image</Label>
             <ImageInput
-              className={inputClass}
+              className={inputClass + (isTemplateEditableField("heroImage") ? " border-amber-300 focus-visible:ring-amber-400 focus-visible:border-amber-400" : "")}
               value={(basics.heroImage as string) ?? ""}
               onChange={(val) => set("heroImage", val)}
-              placeholder="Paste URL or browse…"
+              placeholder={getPlaceholder("heroImage", "Paste URL or browse…")}
             />
-          </div>
-          <div className={fieldGroupClass}>
-            <Label className={labelClass}>Background image</Label>
-            <ImageInput
-              className={inputClass}
-              value={(basics.heroBgImage as string) ?? ""}
-              onChange={(val) => set("heroBgImage", val)}
-              placeholder="Paste URL or browse…"
-            />
+            {isTemplateEditableField("heroImage") && (
+              <p className="text-[11px] text-amber-700/80 mt-1">{templateHints?.["heroImage"]}</p>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className={fieldGroupClass}>

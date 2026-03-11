@@ -34,11 +34,17 @@ export interface EditorTopbarProps {
   onModeChange: (mode: EditorMode) => void;
   previewZoom?: number;
   onPreviewZoomChange?: (zoom: number) => void;
+  /** When set, Publish button becomes "View Published Site" and opens this URL */
+  publishedUrl?: string | null;
+  /** When user clicks Publish (before publish), open the publish drawer */
+  onPublishClick?: () => void;
 }
 
 export function EditorTopbar({
   mode,
   onModeChange,
+  publishedUrl,
+  onPublishClick,
 }: EditorTopbarProps) {
   const { resumeId } = useParams<{ resumeId: string }>();
   const navigate = useNavigate();
@@ -189,14 +195,25 @@ export function EditorTopbar({
             </TooltipTrigger>
             <TooltipContent side="bottom">Share your site</TooltipContent>
           </Tooltip>
-          <Button
-            size="sm"
-            className="h-8 gap-1.5 bg-[hsl(var(--primary))] px-3 text-xs text-[hsl(var(--primary-foreground))] hover:bg-[hsl(var(--primary))]/90"
-            onClick={() => navigate("/dashboard/publish")}
-          >
-            <Upload className="h-4 w-4" />
-            Publish
-          </Button>
+          {publishedUrl ? (
+            <Button
+              size="sm"
+              className="h-8 gap-1.5 bg-[hsl(var(--primary))] px-3 text-xs text-[hsl(var(--primary-foreground))] hover:bg-[hsl(var(--primary))]/90"
+              onClick={() => window.open(publishedUrl, "_blank", "noopener,noreferrer")}
+            >
+              <Globe className="h-4 w-4" />
+              View Published Site
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              className="h-8 gap-1.5 bg-[hsl(var(--primary))] px-3 text-xs text-[hsl(var(--primary-foreground))] hover:bg-[hsl(var(--primary))]/90"
+              onClick={() => (onPublishClick ? onPublishClick() : navigate("/dashboard/publish"))}
+            >
+              <Upload className="h-4 w-4" />
+              Publish
+            </Button>
+          )}
           <div
             className="ml-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500 text-xs font-medium text-white"
             title={user?.email ?? "Account"}

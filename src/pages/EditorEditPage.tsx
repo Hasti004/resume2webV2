@@ -15,7 +15,10 @@ import { useResumeDocStore } from "@/features/editor/resumeDocStore";
 import { EditorBasicsPanel } from "@/features/editor/EditorBasicsPanel";
 import { AIChatPanel } from "@/features/ai/AIChatPanel";
 import { PreviewRenderer } from "@/features/editor/PreviewRenderer";
-import { loadResumeDoc, getResumeUpdatedAt, saveAll, markLastOpened } from "@/lib/resumeRepo";
+import { loadResumeDoc, getResumeUpdatedAt, getResumeOwnerId, saveAll, markLastOpened } from "@/lib/resumeRepo";
+import { getPublishedSiteByResumeId } from "@/repositories/publishedSitesRepo";
+import { PublishDrawer } from "@/features/publish/PublishDrawer";
+import { normalizeSlug } from "@/lib/publish/slug";
 import type { ResumeDoc } from "@/lib/resumeRepo";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -82,11 +85,16 @@ export default function EditorEditPage() {
   const setSaving = useResumeDocStore((s) => s.setSaving);
   const setDirty = useResumeDocStore((s) => s.setDirty);
   const dirty = useResumeDocStore((s) => s.dirty);
+  const basics = useResumeDocStore((s) => s.basics);
+  const blocks = useResumeDocStore((s) => s.blocks);
+  const templateId = useResumeDocStore((s) => s.templateId);
   const getState = useResumeDocStore.getState;
   const [previewZoom, setPreviewZoom] = useState(100);
   const [activeTab, setActiveTab] = useState<EditorMode>("basics");
   const [, setPreviewContainerWidth] = useState(0);
   const previewContainerRef = useRef<HTMLDivElement>(null);
+  const [publishDrawerOpen, setPublishDrawerOpen] = useState(false);
+  const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
 
   /** Fixed left panel width (Lovable-style); preview takes remaining width. */
   const EDITOR_LEFT_WIDTH_PX = 520;
@@ -112,32 +120,47 @@ export default function EditorEditPage() {
     setPendingServerDoc(null);
     setPendingLocalDraft(null);
 
-    Promise.all([loadResumeDoc(resumeId), getResumeUpdatedAt(resumeId)])
-      .then(([doc, serverUpdatedAt]) => {
-        const local = readLocalDraft(resumeId);
-        const serverTime = serverUpdatedAt ? new Date(serverUpdatedAt).getTime() : 0;
-        const localTime = local?.updatedAt ? new Date(local.updatedAt).getTime() : 0;
+    const load = async () => {
+      if (user?.id) {
+        const ownerId = await getResumeOwnerId(resumeId);
+        if (ownerId != null && ownerId !== user.id) {
+          setLoadError("You don't have access to this resume. It belongs to another account.");
+          setLoading(false);
+          return;
+        }
+      }
+      const [doc, serverUpdatedAt] = await Promise.all([loadResumeDoc(resumeId), getResumeUpdatedAt(resumeId)]);
+      const local = readLocalDraft(resumeId);
+      const serverTime = serverUpdatedAt ? new Date(serverUpdatedAt).getTime() : 0;
+      const localTime = local?.updatedAt ? new Date(local.updatedAt).getTime() : 0;
 
-        if (local && localTime > serverTime) {
-          setPendingServerDoc(doc);
-          setPendingLocalDraft(local);
-          setShowRestoreModal(true);
-          setDoc(resumeId, doc);
-        } else {
-          setDoc(resumeId, doc);
-        }
-        try {
-          localStorage.setItem(LAST_OPENED_RESUME_ID_KEY, resumeId);
-        } catch {
-          // ignore
-        }
-        if (user?.id) {
-          markLastOpened(resumeId, user.id).catch(() => {});
-        }
-      })
-      .catch((err) => setLoadError(err instanceof Error ? err.message : "Failed to load"))
-      .finally(() => setLoading(false));
+      if (local && localTime > serverTime) {
+        setPendingServerDoc(doc);
+        setPendingLocalDraft(local);
+        setShowRestoreModal(true);
+        setDoc(resumeId, doc);
+      } else {
+        setDoc(resumeId, doc);
+      }
+      try {
+        localStorage.setItem(LAST_OPENED_RESUME_ID_KEY, resumeId);
+      } catch {
+        // ignore
+      }
+      if (user?.id) {
+        markLastOpened(resumeId, user.id).catch(() => {});
+      }
+    };
+    load().catch((err) => setLoadError(err instanceof Error ? err.message : "Failed to load")).finally(() => setLoading(false));
   }, [resumeId, setDoc, user?.id]);
+
+  useEffect(() => {
+    if (!resumeId) return;
+    getPublishedSiteByResumeId(resumeId).then((site) => {
+      if (site?.published_url) setPublishedUrl(site.published_url);
+      else setPublishedUrl(null);
+    });
+  }, [resumeId]);
 
   const handleRestore = useCallback(() => {
     if (!resumeId || !pendingLocalDraft) return;
@@ -232,6 +255,8 @@ export default function EditorEditPage() {
     );
   }
 
+  const suggestedSlug = basics?.name ? normalizeSlug(String(basics.name)) : "";
+
   return (
     <EditorLayout>
       <EditorTopbar
@@ -239,6 +264,22 @@ export default function EditorEditPage() {
         onModeChange={setActiveTab}
         previewZoom={previewZoom}
         onPreviewZoomChange={setPreviewZoom}
+        publishedUrl={publishedUrl}
+        onPublishClick={() => setPublishDrawerOpen(true)}
+      />
+      <PublishDrawer
+        open={publishDrawerOpen}
+        onOpenChange={setPublishDrawerOpen}
+        resumeId={resumeId}
+        userId={user?.id ?? null}
+        basics={basics ?? {}}
+        blocks={(blocks ?? []).map((b) => ({ type: b.type, content: b.content ?? {}, sort_order: b.sort_order ?? 0 }))}
+        templateId={templateId}
+        suggestedSlug={suggestedSlug}
+        onPublished={(url) => {
+          setPublishedUrl(url);
+          setPublishDrawerOpen(false);
+        }}
       />
       <div className="flex min-h-0 flex-1 flex-shrink-0 overflow-hidden border-t border-border">
 

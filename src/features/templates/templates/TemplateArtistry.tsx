@@ -169,8 +169,10 @@ export function TemplateArtistry({ basics, blocks }: { basics: ResumeBasics; blo
   const email       = (basics.email       as string) || "hello@arturomorales.art";
   const phone       = (basics.phone       as string) || "+34 612 345 678";
   const location    = (basics.location    as string) || "Barcelona, Spain";
-  const heroImage   = (basics.heroImage   as string) || ARTISTRY_PORTRAIT;
-  const heroBgImage = (basics.heroBgImage as string) || ARTISTRY_HERO_BG;
+  // heroImage is used for both the hero background and the About portrait.
+  // heroBgImage kept for backward compat (existing saves) but heroImage takes priority.
+  const heroImage   = (basics.heroImage as string) || (basics.heroBgImage as string) || ARTISTRY_HERO_BG;
+  const heroBgImage = heroImage;
   const instagram   = (basics.instagram   as string) || "";
   const behance     = (basics.behance     as string) || "";
   const sinceYear   = (basics.birthYear   as string) || "1998";

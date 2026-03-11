@@ -25,6 +25,7 @@ import SyncAccounts from "./pages/SyncAccounts";
 import Upgrade from "./pages/Upgrade";
 import PortfolioView from "./pages/PortfolioView";
 import PublicPortfolio from "./pages/PublicPortfolio";
+import PublishedSitePage from "./pages/PublishedSitePage";
 import NotFound from "./pages/NotFound";
 import Intake from "./pages/Intake";
 import { ProtectedRoute } from "./components/ProtectedRoute";
@@ -70,6 +71,9 @@ const App = () => (
           {/* Public portfolio */}
           <Route path="/u/:username" element={<PublicPortfolio />} />
           <Route path="/portfolio/:siteId" element={<PortfolioView />} />
+
+          {/* Published site by slug (debug path-based URL) */}
+          <Route path="/:slug" element={<PublishedSitePage />} />
 
           <Route path="*" element={<NotFound />} />
         </Routes>

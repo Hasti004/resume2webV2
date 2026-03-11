@@ -296,11 +296,24 @@ export async function structureResumeWithGemini(resumeId: string, text: string):
     blocks?: Array<{ type: string; title?: string | null; data?: Record<string, unknown> }>;
   }>(STRUCTURE_RESUME_EDGE_FUNCTION, { body: { resumeId: id, text: trimmedText } });
 
-  if (data?.error) {
-    throw new Error(data.message ?? data.error ?? "Structuring failed.");
+  // Edge function always returns HTTP 200 — check ok flag for logical errors.
+  if (data?.ok === false || data?.error) {
+    throw new Error(data?.message ?? data?.error ?? "Structuring failed. Check that the Edge Function and Gemini API key are configured.");
   }
   if (error) {
-    throw new Error(error.message ?? "Structure request failed.");
+    // supabase-js wraps non-2xx as FunctionsHttpError; try to get the real message.
+    let msg = "Edge Function error.";
+    try {
+      if (typeof (error as { context?: { json?: () => Promise<{ message?: string; error?: string }> } }).context?.json === "function") {
+        const body = await (error as { context: { json: () => Promise<{ message?: string; error?: string }> } }).context.json();
+        msg = body?.message ?? body?.error ?? error.message ?? msg;
+      } else {
+        msg = error.message ?? msg;
+      }
+    } catch {
+      msg = error.message ?? msg;
+    }
+    throw new Error(msg);
   }
   if (data?.ok !== true) {
     throw new Error("Structuring did not complete. Please try again.");
@@ -414,6 +427,31 @@ export async function markLastOpened(resumeId: string, _userId: string): Promise
 }
 
 /**
+ * Delete a resume and its blocks/files (cascade). Only succeeds if the row belongs to the current user (RLS).
+ */
+export async function deleteResume(resumeId: string): Promise<void> {
+  if (!resumeId?.trim()) return;
+  const { error } = await supabase
+    .from(RESUMES_TABLE)
+    .delete()
+    .eq("id", resumeId.trim());
+  if (error) throw error;
+}
+
+/**
+ * Delete all resumes for the current user. Use to clear an account (e.g. new account that had empty drafts).
+ * RLS ensures only the current user's rows are deleted.
+ */
+export async function deleteAllResumesForUser(userId: string): Promise<void> {
+  if (!userId?.trim()) return;
+  const { error } = await supabase
+    .from(RESUMES_TABLE)
+    .delete()
+    .eq("user_id", userId.trim());
+  if (error) throw error;
+}
+
+/**
  * List resumes for the current user (dashboard). Ordered by updated_at desc.
  */
 export async function listDraftsForUser(userId: string): Promise<ResumeListItem[]> {
@@ -447,6 +485,19 @@ export async function getResumeUpdatedAt(resumeId: string): Promise<string | nul
   if (error) throw error;
   const at = data?.updated_at;
   return typeof at === "string" ? at : null;
+}
+
+/**
+ * Get the owner user_id of a resume. Returns null if not found. Use to verify ownership before editing.
+ */
+export async function getResumeOwnerId(resumeId: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from(RESUMES_TABLE)
+    .select("user_id")
+    .eq("id", resumeId)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.user_id != null ? String(data.user_id) : null;
 }
 
 /**

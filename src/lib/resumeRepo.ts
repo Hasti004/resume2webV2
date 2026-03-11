@@ -21,6 +21,9 @@ export {
   saveAll,
   markLastOpened,
   listDraftsForUser,
+  deleteResume,
+  deleteAllResumesForUser,
+  getResumeOwnerId,
   aiEdit,
 } from "@/repositories/resumeRepo";
 export type {
